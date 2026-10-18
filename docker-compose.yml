@@ -1,0 +1,5 @@
+# Postgres arrives in P1 with the simulator; nothing uses it yet.
+services:
+  app:
+    build: ./app
+    ports: ["8080:8080"]
