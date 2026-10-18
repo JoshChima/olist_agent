@@ -1,0 +1,76 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+# Never run two applies against the same state at once. Queue them; don't cancel a running apply halfway.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID_DEPLOY }} # only trusted for refs/heads/main
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      TF_VAR_budget_alert_email: ${{ secrets.BUDGET_ALERT_EMAIL }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.16.6
+          terraform_wrapper: false
+
+      # 1. Infrastructure first: on the very first run this creates the ACR that step 2 pushes to.
+      - run: terraform -chdir=infra init -input=false -backend-config=storage_account_name=${{ vars.TFSTATE_STORAGE_ACCOUNT }}
+      - run: terraform -chdir=infra apply -auto-approve -input=false
+      - name: read outputs
+        id: tf
+        run: |
+          for o in resource_group acr_name acr_login_server container_app_name app_url; do
+            echo "$o=$(terraform -chdir=infra output -raw $o)" >> "$GITHUB_OUTPUT"
+          done
+
+      # 2. Build and push. The image is tagged with the commit SHA (never :latest),
+      # so every revision maps back to a commit and a rollback is a re-deploy of an old tag.
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID_DEPLOY }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: build and push
+        env:
+          IMAGE: ${{ steps.tf.outputs.acr_login_server }}/olist-agent:${{ github.sha }}
+        run: |
+          az acr login --name ${{ steps.tf.outputs.acr_name }}
+          docker build --build-arg GIT_SHA=${{ github.sha }} -t "$IMAGE" app
+          docker push "$IMAGE"
+
+      # 3. Point the app at the new image. This creates a new revision; with
+      # revision_mode Single, traffic moves once the new revision is up.
+      - name: update container app
+        run: |
+          az containerapp update \
+            --name ${{ steps.tf.outputs.container_app_name }} \
+            --resource-group ${{ steps.tf.outputs.resource_group }} \
+            --image ${{ steps.tf.outputs.acr_login_server }}/olist-agent:${{ github.sha }}
+
+      # 4. Smoke test. "200 OK" isn't enough: the old revision would also return it.
+      # Wait until /health reports this commit's SHA. Retries cover scale-from-zero cold starts.
+      - name: smoke test
+        run: |
+          url="${{ steps.tf.outputs.app_url }}/health"
+          for i in $(seq 30); do
+            v=$(curl -fsS --max-time 10 "$url" | jq -r .version) && [ "$v" = "${{ github.sha }}" ] && { echo "live: $v"; exit 0; }
+            echo "attempt $i: got '${v:-no response}', waiting"; sleep 10
+          done
+          exit 1
