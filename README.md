@@ -44,7 +44,8 @@ You need `az`, `gh`, `terraform` >= 1.10, and an Azure subscription where you ar
 3. **Bootstrap.** This creates the state storage, the app resource group, and the two OIDC identities, and registers the resource providers. It takes about 2 minutes.
    ```bash
    terraform -chdir=infra/bootstrap init
-   terraform -chdir=infra/bootstrap apply -var github_repository=<owner>/olist_agent
+   terraform -chdir=infra/bootstrap apply -var github_repository=<owner>/olist_agent \
+     -var github_sub_prefix="$(gh api repos/<owner>/olist_agent/actions/oidc/customization/sub --jq .sub_claim_prefix)"
    ```
    The state for this step stays local in `infra/bootstrap/terraform.tfstate`, which is gitignored. Keep it somewhere safe.
 4. **Configure the repo.** Print the generated `gh variable set` commands and run them:
@@ -89,7 +90,7 @@ terraform -chdir=infra plan -var budget_alert_email=you@example.com
 terraform -chdir=infra destroy -var budget_alert_email=you@example.com
 ```
 
-The state storage has `prevent_destroy` set on purpose. To remove bootstrap too, delete that lifecycle block first, then run `terraform -chdir=infra/bootstrap destroy -var github_repository=<owner>/olist_agent`.
+The state storage has `prevent_destroy` set on purpose. To remove bootstrap too, delete that lifecycle block first, then run `terraform -chdir=infra/bootstrap destroy -var github_repository=<owner>/olist_agent -var github_sub_prefix=<same as apply>`.
 
 ## License and attribution
 

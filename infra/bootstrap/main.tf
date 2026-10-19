@@ -39,6 +39,15 @@ variable "github_repository" {
   description = "GitHub repository as owner/name. Federated credentials only trust tokens from this repo."
 }
 
+variable "github_sub_prefix" {
+  type        = string
+  description = <<-EOT
+    Prefix of the OIDC `sub` claim GitHub issues for this repo. New repos use the immutable
+    format `repo:owner@ownerId/name@repoId`, so don't build it by hand. Get it with:
+    gh api repos/<owner>/<name>/actions/oidc/customization/sub --jq .sub_claim_prefix
+  EOT
+}
+
 variable "location" {
   type    = string
   default = "eastus"
@@ -60,8 +69,8 @@ locals {
   # workflows running on main; `pull_request` matches PR runs from this repo.
   # Fork PRs never get an OIDC token, so they can't use either.
   ci_subjects = {
-    deploy = "repo:${var.github_repository}:ref:refs/heads/main"
-    plan   = "repo:${var.github_repository}:pull_request"
+    deploy = "${var.github_sub_prefix}:ref:refs/heads/main"
+    plan   = "${var.github_sub_prefix}:pull_request"
   }
 
   # Roles the deploy identity may grant. Extend this list when a phase needs a new
