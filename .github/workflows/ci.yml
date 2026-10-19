@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   app:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: app
@@ -23,7 +23,7 @@ jobs:
       - run: uv run pytest
 
   web:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: app/web
@@ -36,7 +36,7 @@ jobs:
       - run: pnpm build # includes tsc type-check
 
   iac:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
@@ -71,7 +71,7 @@ jobs:
     needs: iac
     # Fork PRs get no OIDC token and no secrets, so plan can't run for them. Skip instead of failing.
     if: github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       id-token: write # lets the job request a GitHub OIDC token, which Azure trades for an access token
