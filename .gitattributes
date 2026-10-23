@@ -1,0 +1,3 @@
+# Terraform sends heredoc contents (e.g. ABAC conditions) to Azure verbatim;
+# CRLF from a Windows checkout would show up as a diff on Linux applies.
+*.tf text eol=lf
