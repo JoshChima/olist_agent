@@ -44,12 +44,16 @@ jobs:
           terraform_version: 1.16.6
           terraform_wrapper: false
       - run: terraform fmt -check -recursive infra
-      - name: validate
+      - name: validate and test
+        # terraform test uses mock providers (infra/**/tests/*.tftest.hcl), so it needs no Azure access.
         run: |
           for d in infra/bootstrap infra; do
             terraform -chdir=$d init -backend=false -input=false
             terraform -chdir=$d validate
+            terraform -chdir=$d test
           done
+      - name: risk checker self-test
+        run: python3 scripts/test_tf_risk.py
       - uses: terraform-linters/setup-tflint@6ffdbaa3be476b3431f7275c26966ef32ff60337 # v6.3.2
         with:
           tflint_version: v0.64.0
@@ -93,13 +97,32 @@ jobs:
         id: plan
         continue-on-error: true
         # -lock=false: the plan identity can only read state, and locking is a write (a blob lease).
-        run: terraform -chdir=infra plan -lock=false -input=false -no-color 2>&1 | tee plan.txt; exit "${PIPESTATUS[0]}"
+        run: terraform -chdir=infra plan -lock=false -input=false -no-color -out=tfplan 2>&1 | tee plan.txt; exit "${PIPESTATUS[0]}"
+      - name: risk
+        id: risk
+        if: steps.plan.outcome == 'success'
+        # Same checker the terraform-operator subagent uses (scripts/tf_risk.py). Exit 2 = DANGER, 3 = BLOCK.
+        # plan.json holds unredacted sensitive values, so it's never uploaded; risk.md has addresses only.
+        run: |
+          terraform -chdir=infra show -json tfplan > plan.json
+          rc=0
+          python3 scripts/tf_risk.py plan.json > risk.md || rc=$?
+          cat risk.md
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
       - name: comment
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           {
             echo "### \`terraform plan\`: ${{ steps.plan.outcome }}"
+            if [ "${{ steps.risk.outputs.rc }}" = 2 ]; then
+              echo "> [!WARNING]"
+              echo "> This plan deletes or replaces resources, and CD applies it as soon as this PR merges."
+            elif [ "${{ steps.risk.outputs.rc }}" = 3 ]; then
+              echo "> [!CAUTION]"
+              echo "> Blocked: this plan deletes or replaces a protected resource. Change the code instead."
+            fi
+            [ -f risk.md ] && cat risk.md && echo
             echo "<details><summary>Show plan</summary>"
             echo
             echo '```'
@@ -109,5 +132,5 @@ jobs:
           } > comment.md
           # Edit the bot's last comment instead of stacking one per push.
           gh pr comment ${{ github.event.pull_request.number }} --body-file comment.md --edit-last --create-if-none
-      - if: steps.plan.outcome == 'failure'
+      - if: steps.plan.outcome == 'failure' || steps.risk.outputs.rc == '3'
         run: exit 1

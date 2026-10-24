@@ -46,6 +46,12 @@ variable "github_sub_prefix" {
     format `repo:owner@ownerId/name@repoId`, so don't build it by hand. Get it with:
     gh api repos/<owner>/<name>/actions/oidc/customization/sub --jq .sub_claim_prefix
   EOT
+
+  # GitHub compares subjects as exact strings, so catch a bad prefix before it locks CI out.
+  validation {
+    condition     = can(regex("^repo:[A-Za-z0-9_.-]+@[0-9]+/[A-Za-z0-9_.-]+@[0-9]+$", var.github_sub_prefix))
+    error_message = "Expected the immutable format repo:owner@ownerId/name@repoId, in plain ASCII. Copy it from the gh api command above."
+  }
 }
 
 variable "location" {
