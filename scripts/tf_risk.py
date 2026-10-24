@@ -2,8 +2,12 @@
 
 Usage: terraform show -json plan.tfplan > plan.json
        python3 scripts/tf_risk.py plan.json [--root bootstrap]
+       python3 scripts/tf_risk.py refresh.json --drift
 
 Prints a markdown table. Exit code: 0 SAFE/REVIEW, 2 DANGER, 3 BLOCK.
+With --drift (a `plan -refresh-only` JSON): lists drifted resources, exit 2 if any.
+Don't use `-refresh-only -detailed-exitcode` for that: it exits 2 on any state
+refresh, even when nothing drifted.
 Shared by the terraform-operator subagent (scripts/tf-toolbox.sh) and CI's plan job,
 so both always reach the same verdict.
 """
@@ -75,6 +79,12 @@ def assess(plan, root=""):
     return overall, rows
 
 
+def drift(plan):
+    """Addresses whose real Azure object no longer matches state, with Terraform's actions."""
+    drifted = plan.get("resource_drift", [])
+    return [(d["address"], "/".join(d["change"]["actions"])) for d in drifted]
+
+
 def render(overall, rows):
     lines = [f"**Risk: {overall}**", ""]
     if rows:
@@ -89,7 +99,12 @@ def main(argv):
     path = argv[1]
     root = argv[3] if len(argv) > 3 and argv[2] == "--root" else ""
     with sys.stdin if path == "-" else open(path, encoding="utf-8") as f:
-        overall, rows = assess(json.load(f), root)
+        plan = json.load(f)
+    if "--drift" in argv:
+        drifted = drift(plan)
+        print("\n".join(f"{a} ({act})" for a, act in drifted) or "No drift.")
+        return 2 if drifted else 0
+    overall, rows = assess(plan, root)
     print(render(overall, rows))
     return EXIT[overall]
 

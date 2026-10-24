@@ -129,22 +129,26 @@ cmd_check() {
     need_login
     live_env "$root"
     live_init "$root"
-    # Exit 2 means state and Azure disagree: someone changed Azure outside Terraform, or an apply half-landed.
+    # Drift: state and Azure disagree because something changed Azure outside Terraform, or an
+    # apply half-landed. Read resource_drift from the plan JSON: -detailed-exitcode exits 2 on
+    # any refresh, even when nothing drifted.
     local out rc=0
-    out=$(x terraform -chdir="$dir" plan -refresh-only -detailed-exitcode -lock=false -input=false -no-color 2>&1) || rc=$?
-    case $rc in
-    0) echo "PASS  drift (none)" ;;
-    2)
-      echo "FAIL  drift detected"
-      echo "$out" | sed -n '/has changed/,/^$/p' | sed 's/^/      /'
-      FAILED=1
-      ;;
-    *)
+    if out=$(x sh -c "terraform -chdir=$dir plan -refresh-only -lock=false -input=false -no-color -out=/tmp/refresh.tfplan >/dev/null &&
+        terraform -chdir=$dir show -json /tmp/refresh.tfplan > /tmp/refresh.json" 2>&1); then
+      out=$(x python3 scripts/tf_risk.py /tmp/refresh.json --drift) || rc=$?
+      if [ $rc -eq 0 ]; then
+        echo "PASS  drift (none)"
+      else
+        echo "FAIL  drift detected"
+        echo "$out" | sed 's/^/      /'
+        FAILED=1
+      fi
+      x rm -f /tmp/refresh.tfplan /tmp/refresh.json
+    else
       echo "FAIL  drift check errored"
       echo "$out" | tail -20 | sed 's/^/      /'
       FAILED=1
-      ;;
-    esac
+    fi
   else
     echo "SKIP  drift (not signed in)"
   fi
@@ -182,9 +186,14 @@ cmd_apply() {
   live_env bootstrap
   actual=$(x sha256sum "$file" | cut -d' ' -f1) || die "no plan file at $file"
   [ "$actual" = "$sha" ] || die "plan file changed since it was approved ($actual != $sha)"
-  # Re-check rather than trust the earlier report.
+  # Re-check rather than trust the earlier report, and fail closed: if show or the checker
+  # breaks, the exit code is neither 0 nor 2 and nothing is applied.
   x sh -c "terraform -chdir=infra/bootstrap show -json $file | python3 scripts/tf_risk.py - --root bootstrap" >/dev/null || rc=$?
-  [ $rc -ne 3 ] || die "risk is BLOCK: change the code, don't apply this plan"
+  case $rc in
+  0 | 2) ;; # SAFE/REVIEW, or DANGER that the user approved at the permission prompt
+  3) die "risk is BLOCK: change the code, don't apply this plan" ;;
+  *) die "risk check failed (exit $rc): refusing to apply" ;;
+  esac
   x terraform -chdir=infra/bootstrap apply -input=false -no-color "$file"
   x rm -f "$file"
 }

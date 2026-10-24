@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from tf_risk import assess  # noqa: E402
+from tf_risk import assess, drift  # noqa: E402
 
 
 def rc(address, kind, actions, before=None, after=None, **extra):
@@ -50,5 +50,12 @@ assert overall == "DANGER" and rows[0][3] == "forced by template.0.container.0.n
 # Deleting a protected resource is BLOCK, and the worst row wins.
 delete_state = rc("azurerm_storage_account.tfstate", "azurerm_storage_account", ["delete"])
 assert assess(plan(update, replace, delete_state))[0] == "BLOCK"
+
+# Drift comes only from resource_drift; a refresh with no drift reports none even
+# though `-refresh-only -detailed-exitcode` would exit 2 for it.
+assert drift({"resource_drift": [], "resource_changes": [noop]}) == []
+fic = "azurerm_federated_identity_credential"
+moved = rc(f'{fic}.ci["plan"]', fic, ["update"])
+assert drift({"resource_drift": [moved]}) == [(f'{fic}.ci["plan"]', "update")]
 
 print("tf_risk: all checks passed")
