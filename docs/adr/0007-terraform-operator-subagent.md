@@ -33,7 +33,7 @@ It has no skills or agents. Its container can't see the repo, and it never runs 
 - **The gates are enforced, not requested:**
   - The subagent can't talk to the user. It returns NEEDS: LOGIN, APPROVAL or CODE_CHANGE, and the main agent relays it.
   - The script applies only `bootstrap`, only the exact plan file whose sha256 was approved, and never a BLOCK plan.
-  - `.claude/settings.json` has an `ask` rule on `scripts/tf-toolbox.sh apply`, so a person approves every apply command line.
+  - `.claude/settings.json` has an `ask` rule on `scripts/tf-toolbox.sh apply`, plus a project `PreToolUse` hook (`scripts/ask_tf_apply.py`) that returns `permissionDecision: "ask"` for any `tf-toolbox.sh apply`. A person approves every apply command line.
   - A frontmatter `PreToolUse` hook (`scripts/guard_tf_bash.py`) limits the subagent's Bash to that one script.
 - **Sign-in happens once per task.** It's a device-code `az login` in the container; `down` logs out and removes the container.
 - **Only the plugin's read-only registry tools are used**, for checking azurerm `~> 5.10` arguments.
@@ -41,5 +41,8 @@ It has no skills or agents. Its container can't see the repo, and it never runs 
 ## Consequences
 - `infra/` is still applied only by CD. The subagent plans and checks it, which catches failures before a PR is pushed.
 - The user still approves twice: once on the report, once on the permission prompt. That's deliberate: an agent that computed a hash can't approve its own plan.
-- The frontmatter hook only runs in a trusted workspace. The settings `ask` rule is the gate that always applies. Its behaviour in auto mode was verified when this was introduced (see the PR); if that changes, move the gate into a settings-level `PreToolUse` hook that returns `permissionDecision: "ask"`.
+- The frontmatter hook only runs in a trusted workspace, so it's defense in depth. The approval gate is the settings `ask` rule plus the project hook.
+- **Live test, 2026-10-24.** The `ask` rule alone did *not* prompt. That session was in auto mode, and the rule had been added mid-session. That's why the hook exists. Both only take effect in a session started after they're added. Until a fresh session confirms the prompt, treat the script's own checks (bootstrap only, exact hash, fail-closed risk check) as the guarantee. If a prompt still doesn't appear, make `apply` require a typed confirmation from a real terminal.
+- **Drift needs the JSON.** `plan -refresh-only -detailed-exitcode` exits 2 on any refresh, even with no drift, so drift is read from the plan's `resource_drift`.
+- **The apply risk check fails closed.** Only checker exit 0 (SAFE/REVIEW) or 2 (DANGER) can proceed. A broken `terraform show` was found to slip past a refuse-only-on-3 check.
 - New stateful resource types (Postgres in P1, Key Vault in P2) must be added to `PROTECTED` in `tf_risk.py` in the same PR that introduces them.
