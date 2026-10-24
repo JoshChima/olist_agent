@@ -1,6 +1,8 @@
 # Issue tracker: Linear
 
-Issues and specs for this repo live in Linear: team **AI Enabled Engineer** (key `AIE`), project **olist_agent** (`P-AIE-3`, https://linear.app/gloph-software-factory/project/olist-agent-dc2eb913c358). Use the Linear MCP tools (`mcp__claude_ai_Linear__*`) for all operations.
+Issues and specs for this repo live in Linear: team **AI Enabled Engineer** (key `AIE`), project **olist_agent** (`P-AIE-3`, https://linear.app/gloph-software-factory/project/olist-agent-dc2eb913c358). Use whichever Linear MCP server is connected: the claude.ai Linear connector, or the productivity plugin's `linear` server. Both reach the same workspace, and the tool names below (`save_issue`, `get_issue`, ...) are the same in each.
+
+Linear is the only task list here. Don't create `TASKS.md` or a `memory/` folder in the repo (the productivity plugin's task- and memory-management skills); open work goes in Linear, and session context goes in Claude's own memory.
 
 ## Conventions
 
@@ -13,6 +15,24 @@ Issues and specs for this repo live in Linear: team **AI Enabled Engineer** (key
 - **Close**: comment, then `save_issue` with `state: "Done"` (completed) or `state: "Canceled"` (won't do). Duplicates: `duplicateOf: "AIE-<n>"`.
 
 Statuses in AIE: Backlog, Todo, In Progress, Done, Canceled, Duplicate.
+
+## Linking work to issues
+
+The Linear GitHub integration is installed on `JoshChima/olist_agent`. It links PRs to issues and moves them through statuses on its own, but only when the PR names the issue. Every change to the repo goes through a PR that names one.
+
+- **Issue first.** Before opening a PR, find its issue, or create one if none exists. As a last resort, `AIE-NEW` in the PR description makes Linear create and link one.
+- **Branch name.** Use the issue's `gitBranchName`, which `save_issue` and `get_issue` return (e.g. `joshchima/aie-15-link-every-pr-...`). The issue ID in the branch links the PR as soon as it opens.
+- **PR body.** End it with a magic-word line. Linear reads the title and description, not comments.
+
+  | Line | Use when | Effect |
+  |---|---|---|
+  | `Fixes AIE-n` | this PR finishes the issue | In Progress when opened, **Done when merged** |
+  | `Part of AIE-n` | more PRs for this issue will follow | In Progress, stays open when merged |
+  | `Related to AIE-n` | it touches the issue without advancing it | link only, no status change |
+
+  One PR can fix several issues: `Fixes AIE-3, AIE-4`. When an issue takes several PRs, use `Part of` on every one except the last, which uses `Fixes`. Otherwise the first merge closes the issue early.
+- **Done means deployed.** Merging to `main` triggers CD, so merged → Done matches "shipped".
+- **No PR?** Close a non-code issue (e.g. a manual verification) by hand, as in **Close** above, with a comment giving the evidence.
 
 ## When a skill says "publish to the issue tracker"
 
