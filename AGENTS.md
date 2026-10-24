@@ -6,6 +6,8 @@
 
 Issues live in Linear (team AIE, project `olist_agent`), accessed via the Linear MCP tools. See `docs/agents/issue-tracker.md`.
 
+Every PR names its Linear issue: branch from the issue's `gitBranchName`, and end the PR body with `Fixes AIE-n`, or `Part of AIE-n` when more PRs will follow. See **Linking work to issues** in `docs/agents/issue-tracker.md`.
+
 ### Triage labels
 
 Default canonical labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
