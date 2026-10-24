@@ -26,4 +26,12 @@
 
 **Cost ledger** — One Postgres row per model call (agent, model, tokens, cost, latency, clock window). Source of truth for spend caps and cost dashboards.
 
+**Toolbox** — The `olist-tf` Docker container (`tools/tf-toolbox/`) that runs Terraform and `az` against real Azure from a dev machine, driven only through `scripts/tf-toolbox.sh`. See ADR-0007.
+
+**Risk tier** — `scripts/tf_risk.py`'s verdict on a plan: SAFE, REVIEW (identity/auth or bootstrap changes), DANGER (any delete or replace), BLOCK (delete or replace of a protected stateful resource). Shared by the terraform-operator subagent and CI.
+
+**Approved plan hash** — The sha256 of a saved plan file that the user approved. A bootstrap apply only runs that exact file.
+
+**Drift** — Azure and Terraform state disagree: something changed outside Terraform, or an apply only partly landed. Found with `plan -refresh-only`.
+
 **Live run** — An agent execution that calls models and spends money. Only allowlisted signed-in users trigger live runs; everyone else reads cached findings.

@@ -84,6 +84,21 @@ terraform -chdir=infra plan -var budget_alert_email=you@example.com
 - **Terraform owns infrastructure; CD owns the image.** The container app ignores changes to `image`. The first apply runs a public placeholder that also listens on 8080, and every deploy after that is `az containerapp update --image <acr>/olist-agent:<sha>`.
 - **Cost.** ACR Basic is about $5 a month. The app scales to zero, Log Analytics is capped at 1 GB a day, and an RG budget alerts at 80% actual and 100% forecast of $50. A budget alerts but never stops spending.
 
+## Running Terraform locally
+
+Run Terraform against real Azure through the toolbox container rather than your host's Terraform. The container only uses IPv4, uses the same tool versions as CI, and leaves your `az` login on the host untouched (ADR-0007). You need Docker and `gh`, and you run it from Git Bash:
+
+```bash
+scripts/tf-toolbox.sh up              # build the image if needed and start the container
+scripts/tf-toolbox.sh check infra     # fmt, validate, tflint, terraform test (offline)
+scripts/tf-toolbox.sh login           # device-code sign-in; then check also looks for drift
+scripts/tf-toolbox.sh plan bootstrap  # plan + risk table + PLAN_SHA256
+scripts/tf-toolbox.sh apply bootstrap /tmp/plans/bootstrap.tfplan <sha256>
+scripts/tf-toolbox.sh down            # az logout and remove the container
+```
+
+To plan `infra`, first export `TF_VAR_budget_alert_email`. It's a GitHub secret, so the script can't read it back. `apply` only accepts `bootstrap`: `infra/` is applied by CD. In Claude Code, the `terraform-operator` subagent runs these commands for you and asks before every apply.
+
 ## Teardown
 
 ```bash

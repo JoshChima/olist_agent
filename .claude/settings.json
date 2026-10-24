@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "ask": [
+      "Bash(scripts/tf-toolbox.sh apply:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$CLAUDE_PROJECT_DIR/scripts/ask_tf_apply.py\""
+          }
+        ]
+      }
+    ]
+  }
+}
