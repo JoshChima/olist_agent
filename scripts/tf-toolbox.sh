@@ -143,7 +143,7 @@ cmd_check() {
         echo "PASS  drift (none)"
       else
         echo "FAIL  drift detected"
-        echo "$out" | sed 's/^/      /'
+        printf '%s\n' "$out" | sed 's/^/      /'
         FAILED=1
       fi
       x rm -f /tmp/refresh.tfplan /tmp/refresh.json
@@ -183,20 +183,16 @@ cmd_plan() {
 }
 
 cmd_apply() {
-  local root=$1 file=$2 sha=$3 actual rc=0
+  local root=$1 file=$2 sha=$3 actual
   [ "$root" = bootstrap ] || die "apply is bootstrap-only; infra/ is applied by CD on merge to main"
   need_login
   live_env bootstrap
   actual=$(x sha256sum "$file" | cut -d' ' -f1) || die "no plan file at $file"
   [ "$actual" = "$sha" ] || die "plan file changed since it was approved ($actual != $sha)"
-  # Re-check rather than trust the earlier report, and fail closed: if show or the checker
-  # breaks, the exit code is neither 0 nor 2 and nothing is applied.
-  x sh -c "terraform -chdir=infra/bootstrap show -json $file | python3 scripts/tf_risk.py - --root bootstrap" >/dev/null || rc=$?
-  case $rc in
-  0 | 2) ;; # SAFE/REVIEW, or DANGER that the user approved at the permission prompt
-  3) die "risk is BLOCK: change the code, don't apply this plan" ;;
-  *) die "risk check failed (exit $rc): refusing to apply" ;;
-  esac
+  # Re-check rather than trust the earlier report. The gate exits 0 only when apply may
+  # proceed; BLOCK, a broken `terraform show` or a crashed checker all refuse.
+  x sh -c "terraform -chdir=infra/bootstrap show -json $file | python3 scripts/tf_risk.py - --root bootstrap --gate" >/dev/null ||
+    die "risk gate refused: BLOCK, or the check itself failed. Change the code, don't apply this plan"
   x terraform -chdir=infra/bootstrap apply -input=false -no-color "$file"
   x rm -f "$file"
 }
