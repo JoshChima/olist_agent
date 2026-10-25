@@ -72,3 +72,19 @@ run "state_storage_is_locked_down" {
     error_message = "Blob versioning is how a corrupted state file gets recovered."
   }
 }
+
+run "bootstrap_state_is_yours_alone" {
+  command = plan
+
+  # Bootstrap state defines the CI identities' access, so it gets its own container
+  # that only the person running bootstrap can write.
+  assert {
+    condition     = azurerm_storage_container.bootstrap_state.name == "tfstate-bootstrap"
+    error_message = "Bootstrap state must live in its own container, apart from CI's tfstate."
+  }
+
+  assert {
+    condition     = azurerm_role_assignment.bootstrap_state_you.role_definition_name == "Storage Blob Data Contributor"
+    error_message = "Only the bootstrap operator gets data access to the bootstrap state container."
+  }
+}

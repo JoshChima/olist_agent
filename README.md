@@ -41,13 +41,21 @@ You need `az`, `gh`, `terraform` >= 1.10, and an Azure subscription where you ar
    az login
    az account set --subscription <subscription-id>
    ```
-3. **Bootstrap.** This creates the state storage, the app resource group, and the two OIDC identities, and registers the resource providers. It takes about 2 minutes.
+3. **Bootstrap.** This creates the state storage, the app resource group, and the two OIDC identities, and registers the resource providers. It takes about 2 minutes. The storage that bootstrap's own state will live in doesn't exist yet, so the first apply runs on local state, and the state moves into Azure afterwards.
    ```bash
+   printf 'terraform {\n  backend "local" {}\n}\n' > infra/bootstrap/local_override.tf  # gitignored
    terraform -chdir=infra/bootstrap init
    terraform -chdir=infra/bootstrap apply -var github_repository=<owner>/olist_agent \
      -var github_sub_prefix="$(gh api repos/<owner>/olist_agent/actions/oidc/customization/sub --jq .sub_claim_prefix)"
    ```
-   The state for this step stays local in `infra/bootstrap/terraform.tfstate`, which is gitignored. Keep it somewhere safe.
+   Then move the state into the `tfstate-bootstrap` container, which only you can access, and delete the local copy once it's confirmed:
+   ```bash
+   rm infra/bootstrap/local_override.tf
+   terraform -chdir=infra/bootstrap init -migrate-state \
+     -backend-config=storage_account_name="$(terraform -chdir=infra/bootstrap output -state=terraform.tfstate -raw tfstate_storage_account)"
+   terraform -chdir=infra/bootstrap state list   # now read from Azure
+   ```
+   Later bootstrap runs go through `scripts/tf-toolbox.sh` (see Running Terraform locally).
 4. **Configure the repo.** Print the generated `gh variable set` commands and run them:
    ```bash
    terraform -chdir=infra/bootstrap output -raw github_variables_commands
