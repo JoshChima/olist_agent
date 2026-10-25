@@ -12,7 +12,7 @@ Linear is the only task list here. Don't create `TASKS.md` or a `memory/` folder
 - **Make an issue a sub-issue of a parent**: `save_issue` with `parentId: "AIE-<n>"`.
 - **Comment on an issue**: `save_comment` on the issue.
 - **Apply / remove labels**: `save_issue` with `id` and `addLabels` / `removeLabels`.
-- **Close**: comment, then `save_issue` with `state: "Done"` (completed) or `state: "Canceled"` (won't do). Duplicates: `duplicateOf: "AIE-<n>"`.
+- **Close**: first check **every acceptance criterion** against the delivered work: run the test, hit the endpoint, read the config. Tick the met ones in the description. Move any unmet one to a follow-up issue linked with `relatedTo`, and say so in the closing comment. Then comment, and `save_issue` with `state: "Done"` (completed) or `state: "Canceled"` (won't do). Duplicates: `duplicateOf: "AIE-<n>"`.
 
 Statuses in AIE: Backlog, Todo, In Progress, Done, Canceled, Duplicate.
 
@@ -31,6 +31,9 @@ The Linear GitHub integration is installed on `JoshChima/olist_agent`. It links 
   | `Related to AIE-n` | it touches the issue without advancing it | link only, no status change |
 
   One PR can fix several issues: `Fixes AIE-3, AIE-4`. When an issue takes several PRs, use `Part of` on every one except the last, which uses `Fixes`. Otherwise the first merge closes the issue early.
+
+  `Fixes` closes the issue at merge with nobody checking, so it's where the **Close** criteria check happens: write `Fixes` only when every acceptance criterion is met, and otherwise use `Part of` plus a follow-up issue.
+- **Build tickets with `/implement AIE-n`.** Its `/code-review` checks the diff against the ticket's spec, which catches a missed acceptance criterion before the PR exists.
 - **Done means deployed.** Merging to `main` triggers CD, so merged → Done matches "shipped".
 - **No PR?** Close a non-code issue (e.g. a manual verification) by hand, as in **Close** above, with a comment giving the evidence.
 

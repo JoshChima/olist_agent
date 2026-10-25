@@ -3,8 +3,12 @@
 Usage: terraform show -json plan.tfplan > plan.json
        python3 scripts/tf_risk.py plan.json [--root bootstrap]
        python3 scripts/tf_risk.py refresh.json --drift
+       python3 scripts/tf_risk.py plan.json --root bootstrap --gate
 
 Prints a markdown table. Exit code: 0 SAFE/REVIEW, 2 DANGER, 3 BLOCK.
+With --gate (the apply decision): exit 0 means apply may proceed (SAFE, REVIEW, or DANGER
+that a person approved at the prompt). Anything else refuses, including a crash or bad
+input (Python exits 1), so the gate fails closed by construction.
 With --drift (a `plan -refresh-only` JSON): lists drifted resources, exit 2 if any.
 Don't use `-refresh-only -detailed-exitcode` for that: it exits 2 on any state
 refresh, even when nothing drifted.
@@ -106,6 +110,8 @@ def main(argv):
         return 2 if drifted else 0
     overall, rows = assess(plan, root)
     print(render(overall, rows))
+    if "--gate" in argv:
+        return 3 if overall == "BLOCK" else 0
     return EXIT[overall]
 
 
