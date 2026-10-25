@@ -1,11 +1,12 @@
-# Run once, by you, with local state. It creates what CI needs before CI can
-# run at all: the remote-state storage, the app resource group, and the two
-# GitHub OIDC identities with their role assignments. Everything else lives in
-# ../ and is applied by the pipeline.
+# Run by you, rarely. It creates what CI needs before CI can run at all: the
+# remote-state storage, the app resource group, and the two GitHub OIDC
+# identities with their role assignments. Everything else lives in ../ and is
+# applied by the pipeline.
 #
-# Keep the generated terraform.tfstate somewhere safe (it is gitignored). If
-# you lose it, `terraform import` the resources back; nothing here is stateful
-# beyond the storage account itself.
+# Its own state lives in the `tfstate-bootstrap` container it creates (ADR-0005,
+# amended). Only you can read or write that container; the CI identities can't,
+# because this state describes their permissions. The very first apply, before the
+# container exists, runs on local state via a gitignored local_override.tf (README).
 
 terraform {
   required_version = ">= 1.10"
@@ -14,6 +15,13 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 5.10"
     }
+  }
+  # Partial config: pass -backend-config=storage_account_name=<tfstate_storage_account>.
+  backend "azurerm" {
+    resource_group_name = "rg-olist-agent-tfstate"
+    container_name      = "tfstate-bootstrap"
+    key                 = "bootstrap.tfstate"
+    use_azuread_auth    = true
   }
 }
 
@@ -127,6 +135,23 @@ resource "azurerm_storage_container" "tfstate" {
   lifecycle {
     prevent_destroy = true
   }
+}
+
+# Bootstrap's own state. Separate from `tfstate`, which the deploy identity can
+# write: CI must never be able to edit the state that defines its own access.
+resource "azurerm_storage_container" "bootstrap_state" {
+  name               = "tfstate-bootstrap"
+  storage_account_id = azurerm_storage_account.tfstate.id
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "azurerm_role_assignment" "bootstrap_state_you" {
+  scope                = azurerm_storage_container.bootstrap_state.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = data.azurerm_client_config.current.object_id
 }
 
 # Owner is a control-plane role: it does not include reading blobs. You need
