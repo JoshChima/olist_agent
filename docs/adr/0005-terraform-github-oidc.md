@@ -18,3 +18,10 @@ The infrastructure must be code from day one. Every phase has to end deployed, a
 - The bootstrap step is manual and documented in the README.
 - There are no per-PR preview environments, which keeps cost down. The module layout should still allow adding `staging` later.
 - The pipeline identity needs carefully scoped role assignments. Too broad is a security risk; too narrow breaks `apply`.
+
+## Amendment (2026-10-25): bootstrap state moves to Azure after the first apply
+Local bootstrap state turned out to be a single point of loss: the only copy lived in a disposable Claude worktree, and the toolbox (ADR-0007) wrote to it on every apply.
+- Bootstrap now has an `azurerm` backend: container `tfstate-bootstrap`, key `bootstrap.tfstate`, Entra-only auth. The storage account is passed as `-backend-config` at init, as in `infra/`.
+- **That container is separate from `tfstate`.** Only the person running bootstrap gets Storage Blob Data Contributor on it. The `deploy` identity can write `tfstate`, but this state defines the CI identities' own permissions, so CI must not be able to edit it.
+- **Local state is for the very first apply only,** before the storage account exists. A gitignored `local_override.tf` (Terraform's override-file mechanism) forces `backend "local"`, and `terraform init -migrate-state` then moves the state into the container.
+- Blob versioning and soft delete on the storage account now protect bootstrap state too.

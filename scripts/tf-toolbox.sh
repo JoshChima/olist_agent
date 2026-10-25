@@ -64,11 +64,14 @@ live_env() {
 live_init() {
   local dir
   dir=$(dir_of "$1")
-  if [ "$1" = infra ]; then
+  # Both roots keep state in the tfstate storage account. The exception is bootstrap's
+  # very first apply, before that account exists: a gitignored local_override.tf forces
+  # local state, and a local backend takes no storage_account_name (README).
+  if [ "$1" = bootstrap ] && [ -f "$dir/local_override.tf" ]; then
+    x terraform -chdir="$dir" init -input=false -no-color >/dev/null
+  else
     x terraform -chdir="$dir" init -input=false -no-color \
       -backend-config="storage_account_name=$(ghvar TFSTATE_STORAGE_ACCOUNT)" >/dev/null
-  else
-    x terraform -chdir="$dir" init -input=false -no-color >/dev/null
   fi
 }
 
