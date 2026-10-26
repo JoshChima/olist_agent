@@ -19,9 +19,10 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       ARM_USE_OIDC: "true"
-      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID_DEPLOY }} # only trusted for refs/heads/main
-      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      # Secrets, not vars: GitHub masks secrets in logs, and this repo's logs are public.
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID_DEPLOY }} # only trusted for refs/heads/main
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       TF_VAR_budget_alert_email: ${{ secrets.BUDGET_ALERT_EMAIL }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -31,8 +32,12 @@ jobs:
           terraform_wrapper: false
 
       # 1. Infrastructure first: on the very first run this creates the ACR that step 2 pushes to.
-      - run: terraform -chdir=infra init -input=false -backend-config=storage_account_name=${{ vars.TFSTATE_STORAGE_ACCOUNT }}
-      - run: terraform -chdir=infra apply -auto-approve -input=false
+      - run: terraform -chdir=infra init -input=false -backend-config=storage_account_name=${{ secrets.TFSTATE_STORAGE_ACCOUNT }}
+      # Redact GUIDs (principal and role-assignment IDs) that masking can't cover; same filter as CI's plan.
+      - run: |
+          terraform -chdir=infra apply -auto-approve -input=false 2>&1 |
+            sed -E 's/[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}/<guid>/g'
+          exit "${PIPESTATUS[0]}"
       - name: read outputs
         id: tf
         run: |
@@ -44,9 +49,9 @@ jobs:
       # so every revision maps back to a commit and a rollback is a re-deploy of an old tag.
       - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID_DEPLOY }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID_DEPLOY }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: build and push
         env:
           IMAGE: ${{ steps.tf.outputs.acr_login_server }}/olist-agent:${{ github.sha }}
@@ -58,8 +63,9 @@ jobs:
       # 3. Point the app at the new image. This creates a new revision; with
       # revision_mode Single, traffic moves once the new revision is up.
       - name: update container app
+        # --output none: the default JSON dump carries identity IDs and outbound IPs into the public log.
         run: |
-          az containerapp update \
+          az containerapp update --output none \
             --name ${{ steps.tf.outputs.container_app_name }} \
             --resource-group ${{ steps.tf.outputs.resource_group }} \
             --image ${{ steps.tf.outputs.acr_login_server }}/olist-agent:${{ github.sha }}

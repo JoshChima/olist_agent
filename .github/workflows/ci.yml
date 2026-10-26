@@ -65,6 +65,9 @@ jobs:
           python3 scripts/test_guards.py
       - name: shellcheck
         run: shellcheck scripts/*.sh # preinstalled on GitHub's ubuntu-24.04 image
+      - name: workflows read Azure IDs from secrets
+        # vars.* are never masked, so anything read from them lands in the public logs.
+        run: "! grep -rnE '\\{\\{ *vars\\.' .github/workflows"
       - uses: terraform-linters/setup-tflint@6ffdbaa3be476b3431f7275c26966ef32ff60337 # v6.3.2
         with:
           tflint_version: v0.64.0
@@ -93,9 +96,10 @@ jobs:
       pull-requests: write # post the plan comment
     env:
       ARM_USE_OIDC: "true"
-      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID_PLAN }} # read-only identity
-      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      # Secrets, not vars: GitHub masks secrets in logs, and this repo's logs are public.
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID_PLAN }} # read-only identity
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       TF_VAR_budget_alert_email: ${{ secrets.BUDGET_ALERT_EMAIL }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -103,12 +107,17 @@ jobs:
         with:
           terraform_version: 1.16.6
           terraform_wrapper: false
-      - run: terraform -chdir=infra init -input=false -backend-config=storage_account_name=${{ vars.TFSTATE_STORAGE_ACCOUNT }}
+      - run: terraform -chdir=infra init -input=false -backend-config=storage_account_name=${{ secrets.TFSTATE_STORAGE_ACCOUNT }}
       - name: plan
         id: plan
         continue-on-error: true
         # -lock=false: the plan identity can only read state, and locking is a write (a blob lease).
-        run: terraform -chdir=infra plan -lock=false -input=false -no-color -out=tfplan 2>&1 | tee plan.txt; exit "${PIPESTATUS[0]}"
+        # Redact every GUID before it reaches the log or the PR comment: masking only covers secrets,
+        # not the principal and role-assignment IDs inside resource IDs.
+        run: |
+          terraform -chdir=infra plan -lock=false -input=false -no-color -out=tfplan 2>&1 |
+            sed -E 's/[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}/<guid>/g' | tee plan.txt
+          exit "${PIPESTATUS[0]}"
       - name: risk
         id: risk
         if: steps.plan.outcome == 'success'

@@ -266,12 +266,16 @@ output "tfstate_storage_account" {
 }
 
 output "github_variables_commands" {
-  description = "Run these to configure the repo. None of these values are secret: OIDC has no client secret."
-  value       = <<-EOT
-    gh variable set AZURE_TENANT_ID         -R ${var.github_repository} --body ${data.azurerm_client_config.current.tenant_id}
-    gh variable set AZURE_SUBSCRIPTION_ID   -R ${var.github_repository} --body ${data.azurerm_client_config.current.subscription_id}
-    gh variable set AZURE_CLIENT_ID_DEPLOY  -R ${var.github_repository} --body ${azurerm_user_assigned_identity.ci["deploy"].client_id}
-    gh variable set AZURE_CLIENT_ID_PLAN    -R ${var.github_repository} --body ${azurerm_user_assigned_identity.ci["plan"].client_id}
-    gh variable set TFSTATE_STORAGE_ACCOUNT -R ${var.github_repository} --body ${azurerm_storage_account.tfstate.name}
-  EOT
+  # None of these are credentials (OIDC has no client secret), but the repo's logs are public.
+  # Workflows read the secrets, which GitHub masks in logs; tf-toolbox.sh reads the variables,
+  # which only collaborators can see.
+  description = "Run these to configure the repo: each value as a secret for the workflows and a variable for tf-toolbox.sh."
+  value = join("", [for k, v in {
+    AZURE_TENANT_ID         = data.azurerm_client_config.current.tenant_id
+    AZURE_SUBSCRIPTION_ID   = data.azurerm_client_config.current.subscription_id
+    AZURE_CLIENT_ID_DEPLOY  = azurerm_user_assigned_identity.ci["deploy"].client_id
+    AZURE_CLIENT_ID_PLAN    = azurerm_user_assigned_identity.ci["plan"].client_id
+    TFSTATE_STORAGE_ACCOUNT = azurerm_storage_account.tfstate.name
+    } : "gh secret set ${k} -R ${var.github_repository} --body ${v}\ngh variable set ${k} -R ${var.github_repository} --body ${v}\n"
+  ])
 }
