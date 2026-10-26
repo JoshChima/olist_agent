@@ -56,7 +56,7 @@ You need `az`, `gh`, `terraform` >= 1.10, and an Azure subscription where you ar
    terraform -chdir=infra/bootstrap state list   # now read from Azure
    ```
    Later bootstrap runs go through `scripts/tf-toolbox.sh` (see Running Terraform locally).
-4. **Configure the repo.** Print the generated `gh variable set` commands and run them:
+4. **Configure the repo.** Print the generated `gh secret set` / `gh variable set` commands and run them. Workflows read the secrets, because GitHub masks secrets in this public repo's logs and never masks variables. `scripts/tf-toolbox.sh` reads the variables, which only collaborators can see.
    ```bash
    terraform -chdir=infra/bootstrap output -raw github_variables_commands
    ```
