@@ -112,11 +112,13 @@ jobs:
         id: plan
         continue-on-error: true
         # -lock=false: the plan identity can only read state, and locking is a write (a blob lease).
-        # Redact every GUID before it reaches the log or the PR comment: masking only covers secrets,
-        # not the principal and role-assignment IDs inside resource IDs.
+        # Redact before anything reaches the log or the PR comment; masking only covers secrets.
+        # 1. Drop the "[id=...]" on Reading/Refreshing lines: azurerm_client_config's id is the
+        #    client, object, subscription and tenant IDs base64-encoded, so no GUID filter sees it.
+        # 2. Replace every other GUID (principal and role-assignment IDs inside resource IDs).
         run: |
           terraform -chdir=infra plan -lock=false -input=false -no-color -out=tfplan 2>&1 |
-            sed -E 's/[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}/<guid>/g' | tee plan.txt
+            sed -E 's/ \[id=[^]]*\]//; s/[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}/<guid>/g' | tee plan.txt
           exit "${PIPESTATUS[0]}"
       - name: risk
         id: risk

@@ -33,10 +33,10 @@ jobs:
 
       # 1. Infrastructure first: on the very first run this creates the ACR that step 2 pushes to.
       - run: terraform -chdir=infra init -input=false -backend-config=storage_account_name=${{ secrets.TFSTATE_STORAGE_ACCOUNT }}
-      # Redact GUIDs (principal and role-assignment IDs) that masking can't cover; same filter as CI's plan.
+      # Redact what masking can't cover; same filter as CI's plan step, which explains it.
       - run: |
           terraform -chdir=infra apply -auto-approve -input=false 2>&1 |
-            sed -E 's/[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}/<guid>/g'
+            sed -E 's/ \[id=[^]]*\]//; s/[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}/<guid>/g'
           exit "${PIPESTATUS[0]}"
       - name: read outputs
         id: tf
