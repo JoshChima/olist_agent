@@ -7,6 +7,11 @@ on:
 permissions:
   contents: read
 
+# A new push to a PR supersedes its earlier run; cancel that one instead of finishing it.
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   app:
     runs-on: ubuntu-24.04
@@ -83,6 +88,15 @@ jobs:
           scan-type: config
           scan-ref: .
           severity: HIGH,CRITICAL
+          exit-code: "1"
+      - name: build app image
+        run: docker build -t olist-agent:ci app
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: olist-agent:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true # fail only on findings that have a fix to take
           exit-code: "1"
 
   plan:

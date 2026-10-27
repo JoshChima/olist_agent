@@ -125,4 +125,4 @@ This project uses the **Brazilian E-Commerce Public Dataset by Olist** and the *
 - <https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce>
 - <https://www.kaggle.com/datasets/olistbr/marketing-funnel-olist>
 
-The dataset isn't included in this repo. Any derived data that contains review text (golden sets, fixtures) will live under `data/` with its own CC BY-NC-SA 4.0 license, and is non-commercial.
+The dataset isn't included in this repo. Any derived data that contains review text (golden sets, fixtures) lives under `data/` with its own CC BY-NC-SA 4.0 license ([data/LICENSE](data/LICENSE)), and is non-commercial.
