@@ -10,6 +10,9 @@ RUN pnpm build
 # Stage 2: runtime. Deps are installed before the source is copied so code
 # edits don't invalidate the (slow) dependency layer.
 FROM python:3.13-slim
+# uv installs everything, so the base image's pip (and its vendored, CVE-prone
+# urllib3/setuptools) is dead weight that fails the trivy image scan.
+RUN pip uninstall -y pip
 COPY --from=ghcr.io/astral-sh/uv:0.13.1 /uv /bin/uv
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy PATH="/app/.venv/bin:$PATH"
 WORKDIR /app
