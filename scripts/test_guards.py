@@ -135,4 +135,32 @@ for tool, tool_input in [
 assert post(LINEAR, {"body": "clean"}, known="not json") == 2, "unknown IDs must block"
 Path(body).unlink()
 
+
+# check_base.py: a session in a checkout behind origin/main is told so; otherwise silence.
+def base(repo):
+    return run("check_base.py", "", env={"CLAUDE_PROJECT_DIR": str(repo)})
+
+
+with tempfile.TemporaryDirectory() as tmp:
+    tmp = Path(tmp)
+
+    def git(*args):
+        subprocess.run(
+            ["git", "-c", "user.name=t", "-c", "user.email=t@t", *args],
+            check=True,
+            capture_output=True,
+        )
+
+    git("init", "-q", "-b", "main", str(tmp / "origin"))
+    for n in range(3):
+        git("-C", str(tmp / "origin"), "commit", "-q", "--allow-empty", "-m", str(n))
+    git("clone", "-q", str(tmp / "origin"), str(tmp / "clone"))
+    out = base(tmp / "clone")
+    assert out.returncode == 0 and out.stdout == "", f"up to date must be silent: {out.stdout!r}"
+    git("-C", str(tmp / "clone"), "reset", "-q", "--hard", "HEAD~2")
+    out = base(tmp / "clone")
+    assert out.returncode == 0 and "2 commit(s) behind origin/main" in out.stdout, out.stdout
+    out = base(tmp)  # not a git checkout
+    assert out.returncode == 0 and out.stdout == "", f"outside git must be silent: {out.stdout!r}"
+
 print("guards: all checks passed")
