@@ -33,11 +33,14 @@ jobs:
 
       # 1. Infrastructure first: on the very first run this creates the ACR that step 2 pushes to.
       - run: terraform -chdir=infra init -input=false -backend-config=storage_account_name=${{ secrets.TFSTATE_STORAGE_ACCOUNT }}
-      # Redact what masking can't cover; same filter as CI's plan step, which explains it.
+      # Redacted and checked by scripts/redact.py before it reaches the log, as in CI's plan step.
+      # If redaction missed an ID, the apply has still happened but the job stops before the deploy.
       - run: |
-          terraform -chdir=infra apply -auto-approve -input=false 2>&1 |
-            sed -E 's/ \[id=[^]]*\]//; s/[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}/<guid>/g'
-          exit "${PIPESTATUS[0]}"
+          rc=0
+          terraform -chdir=infra apply -auto-approve -input=false > apply.txt 2>&1 || rc=$?
+          python3 scripts/redact.py < apply.txt || rc=1
+          rm apply.txt
+          exit "$rc"
       - name: read outputs
         id: tf
         run: |

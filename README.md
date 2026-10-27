@@ -88,6 +88,7 @@ terraform -chdir=infra plan -var budget_alert_email=you@example.com
   - `plan` is trusted only for `pull_request`. It is read-only.
 
   Fork PRs get no token at all.
+- **Logs and PR comments are public.** Workflows read Azure IDs from secrets, and Terraform output goes through `scripts/redact.py`, which fails the job if an ID survives redaction. For agents, the `scripts/guard_ids.py` hook blocks GitHub and Linear posts that contain a known ID.
 - **Workload-profiles environment from day one.** P5's serverless GPU needs it, and an environment can't be converted after it's created.
 - **Terraform owns infrastructure; CD owns the image.** The container app ignores changes to `image`. The first apply runs a public placeholder that also listens on 8080, and every deploy after that is `az containerapp update --image <acr>/olist-agent:<sha>`.
 - **Cost.** ACR Basic is about $5 a month. The app scales to zero, Log Analytics is capped at 1 GB a day, and an RG budget alerts at 80% actual and 100% forecast of $50. A budget alerts but never stops spending.
