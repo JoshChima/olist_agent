@@ -112,14 +112,15 @@ jobs:
         id: plan
         continue-on-error: true
         # -lock=false: the plan identity can only read state, and locking is a write (a blob lease).
-        # Redact before anything reaches the log or the PR comment; masking only covers secrets.
-        # 1. Drop the "[id=...]" on Reading/Refreshing lines: azurerm_client_config's id is the
-        #    client, object, subscription and tenant IDs base64-encoded, so no GUID filter sees it.
-        # 2. Replace every other GUID (principal and role-assignment IDs inside resource IDs).
+        # Nothing reaches the log or the PR comment until scripts/redact.py has redacted it and
+        # checked that no ARM_* value survived; if one did, it withholds the plan and fails the job.
         run: |
-          terraform -chdir=infra plan -lock=false -input=false -no-color -out=tfplan 2>&1 |
-            sed -E 's/ \[id=[^]]*\]//; s/[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}/<guid>/g' | tee plan.txt
-          exit "${PIPESTATUS[0]}"
+          rc=0
+          terraform -chdir=infra plan -lock=false -input=false -no-color -out=tfplan > raw.txt 2>&1 || rc=$?
+          python3 scripts/redact.py < raw.txt > plan.txt || rc=1
+          rm raw.txt
+          cat plan.txt
+          exit "$rc"
       - name: risk
         id: risk
         if: steps.plan.outcome == 'success'

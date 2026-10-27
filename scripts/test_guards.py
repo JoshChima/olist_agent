@@ -4,18 +4,25 @@ Run: python3 scripts/test_guards.py. Each guard runs as Claude Code or tf-toolbo
 would run it: a subprocess fed on stdin, judged by exit code and output.
 """
 
+import base64
 import json
+import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).parent
 SHA = "a" * 64
 
 
-def run(script, stdin, *args):
+def run(script, stdin, *args, env=None):
     return subprocess.run(
-        [sys.executable, str(HERE / script), *args], input=stdin, capture_output=True, text=True
+        [sys.executable, str(HERE / script), *args],
+        input=stdin,
+        capture_output=True,
+        text=True,
+        env={**os.environ, **(env or {})},
     )
 
 
@@ -80,5 +87,52 @@ assert gate(plan(change("azurerm_storage_account", ["delete", "create"]))) != 0,
 # The P0 bug: a broken `terraform show` feeds the checker nothing. That must refuse.
 assert gate("") != 0, "empty input must refuse"
 assert gate("not json") != 0, "garbage input must refuse"
+
+# redact.py: CI/CD output loses IDs, and the canary withholds anything redaction missed.
+SUB = "12345678-aaaa-bbbb-cccc-1234567890ab"
+ARM = {"ARM_SUBSCRIPTION_ID": SUB, "ARM_USE_OIDC": "true"}
+b64 = base64.b64encode(f"subscriptionId={SUB};tenantId=x".encode()).decode()
+out = run(
+    "redact.py", f"rg: Read complete [id={b64}]\nid = /subscriptions/{SUB}/rg\nsha {SHA}\n", env=ARM
+)
+assert out.returncode == 0, out.stdout
+assert out.stdout == f"rg: Read complete\nid = /subscriptions/<guid>/rg\nsha {SHA}\n", out.stdout
+# base64 outside [id=...]: redaction misses it, so the canary must catch it.
+out = run("redact.py", f'config = "{b64}"\n', env=ARM)
+assert out.returncode == 1 and b64 not in out.stdout, out.stdout
+assert "ARM_SUBSCRIPTION_ID" in out.stdout, out.stdout
+
+
+# guard_ids.py: agent text bound for GitHub or Linear can't carry a known ID (exit 2 blocks).
+KNOWN = json.dumps({"AZURE_SUBSCRIPTION_ID": SUB})
+
+
+def post(tool, tool_input, known=KNOWN):
+    stdin = json.dumps({"tool_name": tool, "tool_input": tool_input, "cwd": str(HERE)})
+    return run("guard_ids.py", stdin, env={"OLIST_KNOWN_IDS": known}).returncode
+
+
+with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as f:
+    f.write(f"Evidence: /subscriptions/{SUB}\n")
+body = f.name
+LINEAR = "mcp__plugin_productivity_linear__save_comment"
+for tool, tool_input in [
+    ("Bash", {"command": f'gh pr comment 6 --body "id {SUB}"'}),
+    ("Bash", {"command": f'gh pr create --title t --body "see {SUB[:8]}"'}),  # a prefix is enough
+    ("Bash", {"command": f"gh pr edit 6 --body {b64}"}),
+    ("Bash", {"command": f"gh pr create --body-file {body}"}),
+    ("Bash", {"command": f"gh api repos/o/r/issues/1/comments -F body=@{body}"}),
+    (LINEAR, {"issueId": "AIE-1", "body": f"state account {SUB.upper()}"}),
+]:
+    assert post(tool, tool_input) == 2, f"guard_ids allowed {tool} {tool_input}"
+for tool, tool_input in [
+    ("Bash", {"command": 'gh pr create --title t --body "all clean"'}),
+    ("Bash", {"command": f"echo {SUB}"}),  # not posted anywhere
+    ("mcp__plugin_productivity_linear__get_issue", {"id": SUB}),  # a read
+    (LINEAR, {"issueId": "AIE-1", "body": "clean"}),
+]:
+    assert post(tool, tool_input) == 0, f"guard_ids blocked {tool} {tool_input}"
+assert post(LINEAR, {"body": "clean"}, known="not json") == 2, "unknown IDs must block"
+Path(body).unlink()
 
 print("guards: all checks passed")
