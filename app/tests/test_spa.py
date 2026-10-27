@@ -31,3 +31,8 @@ def test_static_asset_and_api_still_win(client: TestClient) -> None:
 
 def test_unknown_api_path_is_404(client: TestClient) -> None:
     assert client.get("/api/nope").status_code == 404
+
+
+def test_missing_asset_is_404_not_index(client: TestClient) -> None:
+    # A stale hashed bundle must 404, or the browser parses index.html as JS.
+    assert client.get("/assets/old-hash.js").status_code == 404

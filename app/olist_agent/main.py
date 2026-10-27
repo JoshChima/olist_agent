@@ -11,8 +11,8 @@ from starlette.types import Scope
 # prove the revision serving traffic is the commit it just pushed.
 VERSION = os.getenv("GIT_SHA", "dev")
 
-# Opt-in so local runs need no Azure (ADR-0006). Configured before the app is
-# created so FastAPI gets instrumented.
+# ADR-0006 picks the Azure Monitor exporter. Gating it on the env var keeps local
+# runs Azure-free. Configured before the app is created so FastAPI gets instrumented.
 if os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING"):
     from azure.monitor.opentelemetry import configure_azure_monitor
 
@@ -38,8 +38,10 @@ class SPAStaticFiles(StaticFiles):
         try:
             return await super().get_response(path, scope)
         except HTTPException as e:
-            # Unknown /api/* stays a 404 rather than returning the SPA shell.
-            if e.status_code != 404 or Path(path).parts[:1] == ("api",):
+            # Unknown /api/* and missing files (/assets/old-hash.js) stay a 404
+            # rather than returning the SPA shell. Only extensionless routes fall back.
+            p = Path(path)
+            if e.status_code != 404 or p.parts[:1] == ("api",) or p.suffix:
                 raise
             return await super().get_response("index.html", scope)
 

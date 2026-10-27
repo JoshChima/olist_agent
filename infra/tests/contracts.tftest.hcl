@@ -41,6 +41,16 @@ run "app_scales_to_zero" {
   }
 }
 
+run "app_sends_telemetry" {
+  command = plan
+
+  # ADR-0006: the app only turns on App Insights when this env var is set.
+  assert {
+    condition     = contains([for e in azurerm_container_app.app.template[0].container[0].env : e.secret_name if e.name == "APPLICATIONINSIGHTS_CONNECTION_STRING"], "appinsights-connection-string")
+    error_message = "The container must get APPLICATIONINSIGHTS_CONNECTION_STRING from a secret, or App Insights stays off."
+  }
+}
+
 run "cost_guardrails" {
   command = plan
 

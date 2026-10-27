@@ -77,8 +77,8 @@ resource "azurerm_log_analytics_workspace" "this" {
 }
 
 # Workspace-based: telemetry lands in the same Log Analytics workspace, so one
-# KQL query can join app traces with container logs. The SDK is wired up later,
-# once there's something worth tracing.
+# KQL query can join app traces with container logs. The container app gets the
+# connection string as a secret, and the app turns the SDK on when it's set.
 resource "azurerm_application_insights" "this" {
   name                = "appi-olist-agent"
   resource_group_name = local.rg
@@ -147,6 +147,12 @@ resource "azurerm_container_app" "app" {
     }
   }
 
+  # A secret, not a plain env value, so it stays out of the revision's config.
+  secret {
+    name  = "appinsights-connection-string"
+    value = azurerm_application_insights.this.connection_string
+  }
+
   template {
     # Scale to zero: no requests, no compute bill. The first request after idle
     # takes a few seconds (cold start), so the CD smoke test retries.
@@ -160,11 +166,17 @@ resource "azurerm_container_app" "app" {
       image  = "mcr.microsoft.com/dotnet/samples:aspnetapp"
       cpu    = 0.25
       memory = "0.5Gi"
+
+      env {
+        name        = "APPLICATIONINSIGHTS_CONNECTION_STRING"
+        secret_name = "appinsights-connection-string"
+      }
     }
   }
 
-  # Terraform owns the infrastructure and CD owns which image runs
-  # (`az containerapp update --image`). Without this, every apply would roll the app back to the placeholder.
+  # Terraform owns the infrastructure, env included, and CD owns which image runs
+  # (`az containerapp update --image`, which keeps env as is). Without this, every
+  # apply would roll the app back to the placeholder.
   lifecycle {
     ignore_changes = [template[0].container[0].image]
   }

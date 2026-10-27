@@ -1,9 +1,18 @@
 import importlib
+from collections.abc import Iterator
 
 import azure.monitor.opentelemetry
 import pytest
 
 import olist_agent.main as main
+
+
+@pytest.fixture(autouse=True)
+def restore_main(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    yield
+    # Drop the stub and env var first, so the reload rebuilds main as other tests expect.
+    monkeypatch.undo()
+    importlib.reload(main)
 
 
 @pytest.mark.parametrize("conn", [None, "InstrumentationKey=test"])
