@@ -3,6 +3,7 @@ name = "olist-agent"
 version = "0.1.0"
 requires-python = ">=3.13"
 dependencies = [
+    "azure-monitor-opentelemetry>=1.8.11",
     "fastapi>=0.146.0",
     "uvicorn>=0.54.0",
 ]
