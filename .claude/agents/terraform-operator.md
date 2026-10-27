@@ -37,9 +37,9 @@ Read `docs/adr/0007-terraform-operator-subagent.md` and `GLOSSARY.md` once at th
 1. `scripts/tf-toolbox.sh up`
 2. `scripts/tf-toolbox.sh whoami`. If it fails, run `login` and return NEEDS: LOGIN with
    the URL and code. When resumed, run `whoami` again before going on.
-   Skip signing in if the task only needs static checks.
+   Skip signing in if the task only needs static checks, and use `check <root> --offline`.
 3. `scripts/tf-toolbox.sh check <root>`: fmt, validate, tflint, `terraform test` (mock
-   providers), and a drift check when signed in. Report every FAIL with its output.
+   providers), and a drift check when signed in (never with `--offline`). Report every FAIL with its output.
    A FAIL in fmt/validate/tflint/test means the code needs fixing: return NEEDS: CODE_CHANGE.
 4. `scripts/tf-toolbox.sh plan <root>` when the task needs a plan. It prints the plan
    summary, the risk table, PLAN_FILE and PLAN_SHA256. Exit 2 is DANGER and 3 is BLOCK;

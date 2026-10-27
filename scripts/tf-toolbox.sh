@@ -6,7 +6,7 @@
 #   up                               build the image if needed, start the container
 #   login                            start a device-code sign-in, print the code, return
 #   whoami                           the signed-in account, or exit 1
-#   check <root>                     static checks, plus drift when signed in
+#   check <root> [--offline]         static checks, plus drift when signed in (never with --offline)
 #   plan <root>                      plan -out, risk table, plan file and sha256
 #   apply bootstrap <file> <sha256>  apply exactly that plan; bootstrap only
 #   down                             az logout and remove the container (plans go with it)
@@ -19,13 +19,14 @@ cd "$(dirname "$0")/.."
 NAME=olist-tf
 # Tagged by content, so editing the Dockerfile rebuilds the image.
 IMAGE="olist-tf-toolbox:$(cat tools/tf-toolbox/Dockerfile tools/tf-toolbox/install.py | sha1sum | cut -c1-12)"
-REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+# Looked up on demand, so `check --offline` needs neither gh nor a GitHub login (CI).
+repo() { gh repo view --json nameWithOwner -q .nameWithOwner; }
 
 die() {
   echo "tf-toolbox: $*" >&2
   exit 1
 }
-ghvar() { gh variable get "$1" -R "$REPO"; }
+ghvar() { gh variable get "$1" -R "$(repo)"; }
 
 dir_of() {
   case "$1" in
@@ -52,8 +53,10 @@ need_login() {
 live_env() {
   ENVS=(-e "TF_DATA_DIR=/tmp/tfdata/$1" -e "ARM_SUBSCRIPTION_ID=$(ghvar AZURE_SUBSCRIPTION_ID)")
   if [ "$1" = bootstrap ]; then
-    ENVS+=(-e "TF_VAR_github_repository=$REPO")
-    ENVS+=(-e "TF_VAR_github_sub_prefix=$(gh api "repos/$REPO/actions/oidc/customization/sub" --jq .sub_claim_prefix)")
+    local r
+    r=$(repo)
+    ENVS+=(-e "TF_VAR_github_repository=$r")
+    ENVS+=(-e "TF_VAR_github_sub_prefix=$(gh api "repos/$r/actions/oidc/customization/sub" --jq .sub_claim_prefix)")
   else
     # A GitHub secret, so it can't be read back; pass it from your shell.
     : "${TF_VAR_budget_alert_email:?export TF_VAR_budget_alert_email=<the BUDGET_ALERT_EMAIL secret> to plan infra}"
@@ -117,18 +120,22 @@ cmd_whoami() {
 }
 
 cmd_check() {
-  local root=$1 dir
+  local root=$1 offline=$2 dir
   dir=$(dir_of "$root")
+  [ -z "$offline" ] || [ "$offline" = --offline ] || die "check takes only --offline after the root, got '$offline'"
   need_up
   # Static checks need no Azure access. They use their own data dir because
-  # -backend=false and a real backend can't share one.
-  ENVS=(-e "TF_DATA_DIR=/tmp/tfdata/$root-static")
+  # -backend=false and a real backend can't share one. GITHUB_TOKEN, when set (CI),
+  # spares tflint --init the anonymous rate limit on the azurerm ruleset download.
+  ENVS=(-e "TF_DATA_DIR=/tmp/tfdata/$root-static" -e GITHUB_TOKEN)
   step "fmt" x terraform -chdir="$dir" fmt -check -recursive
   step "init (no backend)" x terraform -chdir="$dir" init -backend=false -input=false -no-color
   step "validate" x terraform -chdir="$dir" validate -no-color
   step "tflint" x sh -c "tflint --init --config /w/infra/.tflint.hcl >/dev/null && tflint --chdir $dir --config /w/infra/.tflint.hcl"
   step "test (mock providers)" x terraform -chdir="$dir" test -no-color
-  if x az account show >/dev/null 2>&1; then
+  if [ "$offline" = --offline ]; then
+    echo "SKIP  drift (--offline)"
+  elif x az account show >/dev/null 2>&1; then
     need_login
     live_env "$root"
     live_init "$root"
@@ -209,9 +216,9 @@ case "${1:-}" in
 up) cmd_up ;;
 login) cmd_login ;;
 whoami) cmd_whoami ;;
-check) cmd_check "${2:?root}" ;;
+check) cmd_check "${2:?root}" "${3:-}" ;;
 plan) cmd_plan "${2:?root}" ;;
 apply) cmd_apply "${2:?root}" "${3:?plan file}" "${4:?sha256}" ;;
 down) cmd_down ;;
-*) die "usage: $0 up|login|whoami|check <root>|plan <root>|apply bootstrap <file> <sha256>|down" ;;
+*) die "usage: $0 up|login|whoami|check <root> [--offline]|plan <root>|apply bootstrap <file> <sha256>|down" ;;
 esac

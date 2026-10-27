@@ -99,7 +99,8 @@ Run Terraform against real Azure through the toolbox container rather than your 
 
 ```bash
 scripts/tf-toolbox.sh up              # build the image if needed and start the container
-scripts/tf-toolbox.sh check infra     # fmt, validate, tflint, terraform test (offline)
+scripts/tf-toolbox.sh check infra     # fmt, validate, tflint, terraform test; drift too once signed in
+scripts/tf-toolbox.sh check infra --offline  # the same static checks, never contacting Azure
 scripts/tf-toolbox.sh login           # device-code sign-in; then check also looks for drift
 scripts/tf-toolbox.sh plan bootstrap  # plan + risk table + PLAN_SHA256
 scripts/tf-toolbox.sh apply bootstrap /tmp/plans/bootstrap.tfplan <sha256>

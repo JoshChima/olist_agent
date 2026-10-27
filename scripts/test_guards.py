@@ -35,6 +35,7 @@ allowed = [
     "scripts/tf-toolbox.sh up",
     "scripts/tf-toolbox.sh login",
     "scripts/tf-toolbox.sh check infra",
+    "scripts/tf-toolbox.sh check bootstrap --offline",
     "scripts/tf-toolbox.sh plan bootstrap",
     f"scripts/tf-toolbox.sh apply bootstrap /tmp/plans/bootstrap.tfplan {SHA}",
     "scripts/tf-toolbox.sh down",
@@ -48,6 +49,7 @@ blocked = [
     f"scripts/tf-toolbox.sh apply infra /tmp/plans/infra.tfplan {SHA}",
     "scripts/tf-toolbox.sh apply bootstrap /tmp/plans/bootstrap.tfplan abc",
     "scripts/tf-toolbox.sh plan prod",
+    "scripts/tf-toolbox.sh check infra --offline && az login",
 ]
 for command in allowed:
     assert hook("guard_tf_bash.py", command).returncode == 0, f"guard blocked {command!r}"

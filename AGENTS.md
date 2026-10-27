@@ -1,5 +1,9 @@
 # olist_agent
 
+## Checks
+
+Before reporting work done, run `scripts/check.sh` (or a section: `app`, `web`, `iac`, `image`). CI runs the same script.
+
 ## Agent skills
 
 ### Issue tracker
