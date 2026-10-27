@@ -3,7 +3,9 @@
 # local network's IPv6 resets to Azure.
 #
 # Built on Docker Hub's python image, not mcr.microsoft.com/azure-cli: pulls from
-# MCR fail over IPv6 on that same network. Versions match CI (.github/workflows/ci.yml).
+# MCR fail over IPv6 on that same network. CI's static checks run in this image too
+# (scripts/check.sh). Keep TERRAFORM_VERSION equal to setup-terraform's in ci.yml's
+# plan job and cd.yml.
 FROM python:3.12-slim
 
 ARG AZURE_CLI_VERSION=2.90.0

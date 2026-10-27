@@ -10,7 +10,8 @@ import re
 import sys
 
 ALLOWED = re.compile(
-    r"scripts/tf-toolbox\.sh (up|login|whoami|down|check (bootstrap|infra)|plan (bootstrap|infra)"
+    r"scripts/tf-toolbox\.sh (up|login|whoami|down"
+    r"|check (bootstrap|infra)( --offline)?|plan (bootstrap|infra)"
     r"|apply bootstrap /tmp/plans/bootstrap\.tfplan [0-9a-f]{64})"
 )
 
@@ -18,7 +19,7 @@ command = json.load(sys.stdin).get("tool_input", {}).get("command", "").strip()
 if not ALLOWED.fullmatch(command):
     print(
         f"Blocked: {command!r}. This agent may only run "
-        "`scripts/tf-toolbox.sh up|login|whoami|down|check <root>|plan <root>`"
+        "`scripts/tf-toolbox.sh up|login|whoami|down|check <root> [--offline]|plan <root>`"
         " or `scripts/tf-toolbox.sh apply bootstrap /tmp/plans/bootstrap.tfplan <sha256>`,"
         " from the repo root, with nothing chained. Use Read/Grep/Glob for files.",
         file=sys.stderr,
