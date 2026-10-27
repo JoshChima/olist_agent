@@ -3,10 +3,20 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException
+from starlette.responses import Response
+from starlette.types import Scope
 
 # Baked into the image at build time (see Dockerfile), so the CD smoke test can
 # prove the revision serving traffic is the commit it just pushed.
 VERSION = os.getenv("GIT_SHA", "dev")
+
+# Opt-in so local runs need no Azure (ADR-0006). Configured before the app is
+# created so FastAPI gets instrumented.
+if os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING"):
+    from azure.monitor.opentelemetry import configure_azure_monitor
+
+    configure_azure_monitor()
 
 app = FastAPI(title="olist_agent")
 
@@ -21,7 +31,20 @@ def hello() -> dict[str, str]:
     return {"message": "Hello from olist_agent"}
 
 
+class SPAStaticFiles(StaticFiles):
+    """Serves index.html for unknown paths so client-side routes deep-link."""
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        try:
+            return await super().get_response(path, scope)
+        except HTTPException as e:
+            # Unknown /api/* stays a 404 rather than returning the SPA shell.
+            if e.status_code != 404 or Path(path).parts[:1] == ("api",):
+                raise
+            return await super().get_response("index.html", scope)
+
+
 # Mounted last so API routes win. Absent when running tests or API-only dev.
 static_dir = Path(os.getenv("STATIC_DIR", "web/dist"))
 if static_dir.is_dir():
-    app.mount("/", StaticFiles(directory=static_dir, html=True), name="spa")
+    app.mount("/", SPAStaticFiles(directory=static_dir, html=True), name="spa")
