@@ -69,7 +69,7 @@ The base app is a **time-travel simulator** over the Olist Kaggle dataset (order
 - Terraform, deployed from a walking skeleton in P0 onward; each phase adds its own infrastructure diff.
 - Runtime: Azure Container Apps, one app plus jobs, in a **workload-profiles environment from P0**. GPU profiles need that environment type and an environment cannot be converted later.
 - ACR Basic, and Postgres Flexible Server (smallest burstable tier) with pgvector.
-- Blob storage for the raw SQLite file, uploaded once with `make upload-data` and never committed to git. An idempotent loader job reads it.
+- Blob storage for the raw SQLite file, uploaded once with `scripts/upload-data.sh` (through the toolbox) and never committed to git. An idempotent loader job reads it.
 - Key Vault with managed identity.
 - Public GitHub repo. GitHub Actions authenticates with OIDC. Terraform remote state lives in Azure Storage, created by a `bootstrap/` configuration.
 - One Azure environment. Pull requests run lint, tests, evals, `terraform plan` (posted as a PR comment) and trivy. Merging to `main` runs apply, deploy and a smoke test.
