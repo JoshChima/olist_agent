@@ -45,7 +45,8 @@ def test_range_ends_are_valid_clocks(client: TestClient) -> None:
 
 
 def test_view_list_is_the_sim_views(client: TestClient) -> None:
-    assert "orders" in client.get("/api/explore").json()["views"]
+    views = client.get("/api/explore").json()["views"]
+    assert {"orders", "order_items", "order_payments"} <= set(views)
 
 
 def test_rows_page_50_at_a_time_with_total(client: TestClient) -> None:
