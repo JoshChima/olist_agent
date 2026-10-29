@@ -278,9 +278,10 @@ resource "azurerm_role_assignment" "operator_blob_contributor" {
 resource "azurerm_postgresql_flexible_server" "this" {
   name                = "psql-olist-agent-${local.suffix}"
   resource_group_name = local.rg
-  # East US refuses new Flexible Servers for this subscription ("Provisioning is restricted
-  # in this region"), so the server sits next door. Everything else stays in East US.
-  location              = "eastus2"
+  # This subscription can't create Flexible Servers in East US (region restricted) or East US 2
+  # (zero quota: SkuNotAvailable). South Central US has Burstable quota and already runs a B1ms
+  # for this subscription (ADR-0002). Everything else stays in East US.
+  location              = "southcentralus"
   version               = "17"
   sku_name              = "B_Standard_B1ms"
   storage_mb            = 32768
