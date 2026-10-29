@@ -1,5 +1,5 @@
 import os
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -7,6 +7,7 @@ import psycopg
 from fastapi import Depends, FastAPI, Query
 from fastapi.staticfiles import StaticFiles
 from psycopg import sql
+from psycopg.rows import dict_row
 from starlette.exceptions import HTTPException
 from starlette.responses import Response
 from starlette.types import Scope
@@ -112,6 +113,63 @@ def explore_rows(
             [PAGE_SIZE, (page - 1) * PAGE_SIZE],
         ).fetchall()
     return {"columns": columns, "rows": rows, "total": total, "page": page, "page_size": PAGE_SIZE}
+
+
+# The order dashboard. Every query reads sim views only, which already hide anything later
+# than the clock; the bounds below only narrow to the last 30 or 90 days.
+ORDER_KPIS = """
+select
+    (select count(*) from sim.orders where order_purchase_timestamp >= %(d30)s) as orders,
+    (select count(distinct c.customer_unique_id)
+        from sim.orders o join sim.customers c using (customer_id)
+        where o.order_purchase_timestamp >= %(d30)s) as customers,
+    (select coalesce(sum(p.payment_value), 0)::float8
+        from sim.order_payments p join sim.orders o using (order_id)
+        where o.order_purchase_timestamp >= %(d30)s) as gmv,
+    (select avg(review_score)::float8
+        from sim.order_reviews where review_creation_date >= %(d30)s) as avg_review_score,
+    -- Of the orders delivered in the 30 days. The estimate is a day, so late means a later day.
+    (select 100 * avg((order_delivered_customer_date::date
+                        > order_estimated_delivery_date::date)::int)::float8
+        from sim.orders where order_delivered_customer_date >= %(d30)s) as late_pct
+"""
+DAILY_ORDERS = """
+select d::date as day, count(o.order_id) as orders
+from generate_series(%(d90)s::timestamp, %(clock)s::timestamp, interval '1 day') d
+left join sim.orders o on o.order_purchase_timestamp::date = d::date
+group by d order by d
+"""
+ORDERS_BY_STATUS = """
+select order_status as status, count(*) as orders from sim.orders group by 1 order by 2 desc, 1
+"""
+TOP_CATEGORIES = """
+select coalesce(t.product_category_name_english, p.product_category_name) as category,
+    count(distinct i.order_id) as orders
+from sim.order_items i
+left join sim.products p using (product_id)
+left join sim.product_category_name_translation t using (product_category_name)
+group by 1 order by 2 desc, 1 nulls last limit 10
+"""
+ORDERS_BY_STATE = """
+select c.customer_state as state, count(*) as orders,
+    count(distinct c.customer_unique_id) as customers
+from sim.orders o join sim.customers c using (customer_id)
+group by 1 order by 2 desc, 1
+"""
+
+
+@app.get("/api/orders")
+def order_dashboard(clock: Clock) -> dict[str, Any]:
+    bounds = {"clock": clock, "d30": clock - timedelta(29), "d90": clock - timedelta(89)}
+    with db.at_clock(clock) as conn:
+        cur = conn.cursor(row_factory=dict_row)
+        return {
+            "kpis": cur.execute(ORDER_KPIS, bounds).fetchone(),
+            "daily_orders": cur.execute(DAILY_ORDERS, bounds).fetchall(),
+            "by_status": cur.execute(ORDERS_BY_STATUS).fetchall(),
+            "top_categories": cur.execute(TOP_CATEGORIES).fetchall(),
+            "by_state": cur.execute(ORDERS_BY_STATE).fetchall(),
+        }
 
 
 class SPAStaticFiles(StaticFiles):
