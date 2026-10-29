@@ -56,8 +56,8 @@ run "postgres_is_the_smallest_tier" {
 
   # ADR-0002: East US is restricted for Flexible Server on this subscription; CD failed there.
   assert {
-    condition     = azurerm_postgresql_flexible_server.this.location == "eastus2"
-    error_message = "Postgres must stay in East US 2: East US refuses new Flexible Servers (ADR-0002)."
+    condition     = azurerm_postgresql_flexible_server.this.location == "southcentralus"
+    error_message = "Postgres must stay in South Central US: East US and East US 2 refuse new Flexible Servers (ADR-0002)."
   }
 }
 
