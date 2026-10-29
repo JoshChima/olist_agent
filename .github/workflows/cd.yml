@@ -24,6 +24,7 @@ jobs:
       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       TF_VAR_budget_alert_email: ${{ secrets.BUDGET_ALERT_EMAIL }}
+      TF_VAR_operator_object_id: ${{ secrets.AZURE_OPERATOR_OBJECT_ID }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
@@ -44,7 +45,7 @@ jobs:
       - name: read outputs
         id: tf
         run: |
-          for o in resource_group acr_name acr_login_server container_app_name app_url; do
+          for o in resource_group acr_name acr_login_server container_app_name loader_job_name app_url; do
             echo "$o=$(terraform -chdir=infra output -raw $o)" >> "$GITHUB_OUTPUT"
           done
 
@@ -73,7 +74,33 @@ jobs:
             --resource-group ${{ steps.tf.outputs.resource_group }} \
             --image ${{ steps.tf.outputs.acr_login_server }}/olist-agent:${{ github.sha }}
 
-      # 4. Smoke test. "200 OK" isn't enough: the old revision would also return it.
+      # 4. Load. The loader job runs the same image: migrations, the app's database role,
+      # and olist.sqlite from Blob if one was uploaded. It exits 0 with "no source data"
+      # until then. Its output goes to Log Analytics, not here: it would carry Azure IDs.
+      - name: run loader
+        env:
+          JOB: ${{ steps.tf.outputs.loader_job_name }}
+          RG: ${{ steps.tf.outputs.resource_group }}
+        # --query/--output none throughout: start and show return the job's resource ID.
+        run: |
+          az containerapp job update --output none --name "$JOB" --resource-group "$RG" \
+            --image ${{ steps.tf.outputs.acr_login_server }}/olist-agent:${{ github.sha }}
+          run=$(az containerapp job start --name "$JOB" --resource-group "$RG" --query name -o tsv)
+          for i in $(seq 90); do
+            status=$(az containerapp job execution show --name "$JOB" --resource-group "$RG" \
+              --job-execution-name "$run" --query properties.status -o tsv)
+            case "$status" in
+            Succeeded) echo "loader: $status"; exit 0 ;;
+            Failed | Stopped | Degraded)
+              echo "loader: $status. Its logs are in Log Analytics (ContainerAppConsoleLogs_CL)."
+              exit 1 ;;
+            esac
+            echo "attempt $i: ${status:-no status yet}, waiting"; sleep 20
+          done
+          echo "loader: still not done after 30 minutes"
+          exit 1
+
+      # 5. Smoke test. "200 OK" isn't enough: the old revision would also return it.
       # Wait until /health reports this commit's SHA. Retries cover scale-from-zero cold starts.
       - name: smoke test
         run: |
