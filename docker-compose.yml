@@ -1,5 +1,38 @@
-# Postgres arrives in P1 with the simulator; nothing uses it yet.
+# The whole simulator offline: put the Kaggle olist.sqlite in data/ (or point OLIST_DATA
+# at its folder) and run `docker compose up`. Local auth is a password DSN (ADR-0010).
 services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: olist
+      POSTGRES_PASSWORD: olist
+      POSTGRES_DB: olist
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "olist"]
+      interval: 2s
+      retries: 15
+
+  # Same image as the app, its own entry point. Exits 0 when there is nothing to do.
+  loader:
+    build: ./app
+    command: ["python", "-m", "olist_agent.loader"]
+    environment:
+      DATABASE_URL: postgresql://olist:olist@db/olist
+      OLIST_SQLITE: /data/olist.sqlite
+      APP_DB_ROLE: olist_app
+      APP_DB_PASSWORD: olist_app
+    volumes: ["${OLIST_DATA:-./data}:/data:ro"]
+    depends_on:
+      db: { condition: service_healthy }
+
   app:
     build: ./app
     ports: ["8080:8080"]
+    environment:
+      DATABASE_URL: postgresql://olist_app:olist_app@db/olist # may only read sim
+    depends_on:
+      loader: { condition: service_completed_successfully }
+
+volumes:
+  pgdata:

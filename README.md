@@ -60,9 +60,10 @@ You need `az`, `gh`, `terraform` >= 1.10, and an Azure subscription where you ar
    ```bash
    terraform -chdir=infra/bootstrap output -raw github_variables_commands
    ```
-   Then add the one secret, the budget alert address:
+   Then add two more secrets: the budget alert address, and your Entra object ID, which makes you a Postgres admin and lets you upload data.
    ```bash
    gh secret set BUDGET_ALERT_EMAIL -R <owner>/olist_agent --body you@example.com
+   gh secret set AZURE_OPERATOR_OBJECT_ID -R <owner>/olist_agent --body "$(az ad signed-in-user show --query id -o tsv)"
    ```
 5. **Push `main`.** CD applies `infra/`. The first run takes about 5–10 minutes, mostly for the Container Apps environment. It then builds and pushes the image, rolls the app, and smoke-tests `/health`.
    If this work is still on a feature branch, merge it into `main` first.
@@ -77,8 +78,20 @@ Optional: to run a plan from your machine (bootstrap gave you blob access to the
 
 ```bash
 terraform -chdir=infra init -backend-config=storage_account_name=<tfstate_storage_account output>
-terraform -chdir=infra plan -var budget_alert_email=you@example.com
+terraform -chdir=infra plan -var budget_alert_email=you@example.com -var operator_object_id=<your object ID>
 ```
+
+## Uploading data
+
+The deployed app shows "no data loaded yet" until you upload the Kaggle `olist.sqlite`. Put it in `data/` (gitignored), sign in to the toolbox, and upload it:
+
+```bash
+scripts/tf-toolbox.sh login         # once per toolbox container
+scripts/upload-data.sh              # or: scripts/upload-data.sh data/other.sqlite
+gh workflow run cd.yml              # CD's loader job loads it
+```
+
+The file goes to the private `olist-data` container, as you. CD runs the loader job after every deploy. The job loads only when the file or the migrations changed, and fails CD if it fails.
 
 ## How the pieces fit
 
@@ -90,7 +103,7 @@ terraform -chdir=infra plan -var budget_alert_email=you@example.com
   Fork PRs get no token at all. The exact roles are in the table under Bootstrap role assignments.
 - **Logs and PR comments are public.** Workflows read Azure IDs from secrets, and Terraform output goes through `scripts/redact.py`, which fails the job if an ID survives redaction. For agents, the `scripts/guard_ids.py` hook blocks GitHub and Linear posts that contain a known ID.
 - **Workload-profiles environment from day one.** P5's serverless GPU needs it, and an environment can't be converted after it's created.
-- **Terraform owns infrastructure; CD owns the image.** The container app ignores changes to `image`. The first apply runs a public placeholder that also listens on 8080, and every deploy after that is `az containerapp update --image <acr>/olist-agent:<sha>`.
+- **Terraform owns infrastructure; CD owns the image.** The container app ignores changes to `image`. The first apply runs a public placeholder that also listens on 8080, and every deploy after that is `az containerapp update --image <acr>/olist-agent:<sha>`. The loader job works the same way, and CD runs it after each deploy.
 - **Cost.** ACR Basic is about $5 a month. The app scales to zero, Log Analytics is capped at 1 GB a day, and an RG budget alerts at 80% actual and 100% forecast of $50. A budget alerts but never stops spending.
 
 ## Bootstrap role assignments
@@ -103,7 +116,7 @@ Every role assignment `infra/bootstrap/main.tf` creates, with the reason from it
 | deploy identity | Role Based Access Control Administrator, with an ABAC condition | app RG | Terraform grants roles (e.g. AcrPull to the app's identity), which Contributor can't do. User Access Administrator could, but could also make itself Owner. The condition lets this identity grant or revoke **only** AcrPull, Storage Blob Data Reader and Storage Blob Data Contributor. |
 | deploy identity | Storage Blob Data Contributor | `tfstate` container | Reads, writes and locks the `infra/` state. It has nothing on `tfstate-bootstrap`: CI must never be able to edit the state that defines its own access. |
 | plan identity | Reader | app RG | A PR branch runs whatever code it contains, so plan must not be able to change anything. |
-| plan identity | Custom role `olist-agent terraform plan: list container app secrets` (defined in bootstrap, assignable only in the app RG; one action, `Microsoft.App/containerApps/listSecrets/action`) | app RG | The azurerm provider calls listSecrets when it refreshes a container app, and Reader doesn't include that action, so plan would fail without it. This means the plan identity **can read container-app secrets**; it is not read-only in the strict sense. |
+| plan identity | Custom role `olist-agent terraform plan: list container app secrets` (defined in bootstrap, assignable only in the app RG; two actions, `Microsoft.App/containerApps/listSecrets/action` and `Microsoft.App/jobs/listSecrets/action`) | app RG | The azurerm provider calls listSecrets when it refreshes a container app or a container app job, and Reader doesn't include those actions, so plan would fail without them. This means the plan identity **can read container-app and job secrets**; it is not read-only in the strict sense. |
 | plan identity | Storage Blob Data Reader | `tfstate` container | Reads the `infra/` state. CI runs plan with `-lock=false`, because taking the lock (a blob lease) is a write. |
 | you (the developer) | Storage Blob Data Contributor | `tfstate-bootstrap` container | Bootstrap's own state. Only you can read or write it; the CI identities can't, because this state describes their permissions. |
 | you (the developer) | Storage Blob Data Contributor | `tfstate` container | Owner is a control-plane role and doesn't include reading blobs. You need this to run `terraform plan` against the remote state from your machine. |
@@ -122,7 +135,7 @@ scripts/tf-toolbox.sh apply bootstrap /tmp/plans/bootstrap.tfplan <sha256>
 scripts/tf-toolbox.sh down            # az logout and remove the container
 ```
 
-To plan `infra`, first export `TF_VAR_budget_alert_email`. It's a GitHub secret, so the script can't read it back. `apply` only accepts `bootstrap`: `infra/` is applied by CD. In Claude Code, the `terraform-operator` subagent runs these commands for you and asks before every apply.
+To plan `infra`, first export `TF_VAR_budget_alert_email` and `TF_VAR_operator_object_id`. They're GitHub secrets, so the script can't read them back. `apply` only accepts `bootstrap`: `infra/` is applied by CD. In Claude Code, the `terraform-operator` subagent runs these commands for you and asks before every apply.
 
 ### Why apply needs the plan's sha256
 
@@ -137,7 +150,7 @@ Bootstrap is where this matters most. A half-landed apply left state and Azure d
 ## Teardown
 
 ```bash
-terraform -chdir=infra destroy -var budget_alert_email=you@example.com
+terraform -chdir=infra destroy -var budget_alert_email=you@example.com -var operator_object_id=<your object ID>
 ```
 
 The state storage has `prevent_destroy` set on purpose. To remove bootstrap too, delete that lifecycle block first, then run `terraform -chdir=infra/bootstrap destroy -var github_repository=<owner>/olist_agent -var github_sub_prefix=<same as apply>`.

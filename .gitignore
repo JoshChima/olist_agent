@@ -13,6 +13,8 @@ dist/
 *_override.tf
 *_override.tf.json
 
-# Local secrets and scratch databases.
+# Local secrets.
 .env
+
+# The Olist source data and scratch databases are never committed (data/LICENSE).
 *.sqlite

@@ -238,13 +238,17 @@ resource "azurerm_role_assignment" "plan_reader" {
   principal_id         = azurerm_user_assigned_identity.ci["plan"].principal_id
 }
 
-# The azurerm provider calls listSecrets when it refreshes a container app, and
-# Reader doesn't include that action, so plan would fail without this role.
+# The azurerm provider calls listSecrets when it refreshes a container app or a
+# container app job, and Reader doesn't include those actions, so plan would fail
+# without this role.
 resource "azurerm_role_definition" "plan_list_secrets" {
   name  = "olist-agent terraform plan: list container app secrets"
   scope = azurerm_resource_group.app.id
   permissions {
-    actions = ["Microsoft.App/containerApps/listSecrets/action"]
+    actions = [
+      "Microsoft.App/containerApps/listSecrets/action",
+      "Microsoft.App/jobs/listSecrets/action",
+    ]
   }
   assignable_scopes = [azurerm_resource_group.app.id]
 }

@@ -60,9 +60,11 @@ live_env() {
     ENVS+=(-e "TF_VAR_github_repository=$r")
     ENVS+=(-e "TF_VAR_github_sub_prefix=$(gh api "repos/$r/actions/oidc/customization/sub" --jq .sub_claim_prefix)")
   else
-    # A GitHub secret, so it can't be read back; pass it from your shell.
+    # GitHub secrets, so they can't be read back; pass them from your shell.
     : "${TF_VAR_budget_alert_email:?export TF_VAR_budget_alert_email=<the BUDGET_ALERT_EMAIL secret> to plan infra}"
+    : "${TF_VAR_operator_object_id:?export TF_VAR_operator_object_id=<the AZURE_OPERATOR_OBJECT_ID secret> to plan infra}"
     ENVS+=(-e "TF_VAR_budget_alert_email=$TF_VAR_budget_alert_email")
+    ENVS+=(-e "TF_VAR_operator_object_id=$TF_VAR_operator_object_id")
   fi
 }
 

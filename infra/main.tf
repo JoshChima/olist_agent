@@ -20,7 +20,15 @@ terraform {
 
 # Resource providers were registered by bootstrap. azurerm 5.x registers none by default, which suits an RG-scoped identity.
 provider "azurerm" {
-  features {}
+  features {
+    # CI's plan identity is Reader, which has no data-plane access and can't list keys.
+    # Without this, refreshing the data storage account calls the blob/queue APIs and fails.
+    storage {
+      data_plane_available = false
+    }
+  }
+  # Shared keys are off on the data account, so any storage call must use Entra ID.
+  storage_use_azuread = true
 }
 
 variable "resource_group_name" {
@@ -38,6 +46,18 @@ variable "budget_alert_email" {
   type        = string
   sensitive   = true # Keeps it out of plan output, which CI posts on a public PR.
   description = "Where budget alerts go."
+}
+
+variable "operator_object_id" {
+  type        = string
+  sensitive   = true # An Azure ID: kept out of the public plan comment.
+  description = "Your Entra user's object ID (az ad signed-in-user show --query id -o tsv). Postgres admin and blob uploader."
+
+  # An unset GitHub secret arrives as "", which would fail much later, at apply.
+  validation {
+    condition     = can(regex("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", var.operator_object_id))
+    error_message = "operator_object_id must be an Entra object ID (a GUID). Is the AZURE_OPERATOR_OBJECT_ID secret set?"
+  }
 }
 
 data "azurerm_client_config" "current" {}
@@ -171,6 +191,16 @@ resource "azurerm_container_app" "app" {
         name        = "APPLICATIONINSIGHTS_CONNECTION_STRING"
         secret_name = "appinsights-connection-string"
       }
+      # No password: the app signs in with a token for its identity (ADR-0010). The
+      # loader creates this role and lets it read sim only.
+      env {
+        name  = "DATABASE_URL"
+        value = "${local.pg_dsn} user=${azurerm_user_assigned_identity.app.name}"
+      }
+      env {
+        name  = "AZURE_CLIENT_ID"
+        value = azurerm_user_assigned_identity.app.client_id
+      }
     }
   }
 
@@ -182,6 +212,209 @@ resource "azurerm_container_app" "app" {
   }
 
   depends_on = [azurerm_role_assignment.app_acr_pull]
+}
+
+# --- Loader identity ------------------------------------------------------
+
+# The loader job's identity: Postgres Entra admin, reader of the raw data blob. The app's
+# own identity gets neither; the loader makes it a Postgres role that can only read sim.
+resource "azurerm_user_assigned_identity" "loader" {
+  name                = "id-olist-agent-loader"
+  resource_group_name = local.rg
+  location            = local.location
+}
+
+resource "azurerm_role_assignment" "loader_acr_pull" {
+  scope                = azurerm_container_registry.this.id
+  role_definition_name = "AcrPull"
+  principal_id         = azurerm_user_assigned_identity.loader.principal_id
+  principal_type       = "ServicePrincipal"
+}
+
+# --- Raw data storage -----------------------------------------------------
+
+# Holds olist.sqlite, uploaded by scripts/upload-data.sh. The data is public (Kaggle),
+# so network rules add nothing that Entra-only access doesn't already give.
+# Not prevent_destroy: the file is re-uploadable, and teardown must work.
+#trivy:ignore:AVD-AZU-0012 Container Apps without a VNet have no fixed outbound IPs; access is gated by Entra ID RBAC.
+resource "azurerm_storage_account" "data" { # tflint-ignore: azurerm_resources_missing_prevent_destroy
+  name                     = "stolistdata${local.suffix}"
+  resource_group_name      = local.rg
+  location                 = local.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+  min_tls_version          = "TLS1_2"
+  # Entra ID only: no account keys that could leak and grant full access.
+  shared_access_key_enabled = false
+}
+
+# tflint-ignore: azurerm_resources_missing_prevent_destroy # Re-uploadable; teardown must work.
+resource "azurerm_storage_container" "data" {
+  name                  = "olist-data"
+  storage_account_id    = azurerm_storage_account.data.id
+  container_access_type = "private"
+}
+
+resource "azurerm_role_assignment" "loader_blob_reader" {
+  scope                = azurerm_storage_container.data.id
+  role_definition_name = "Storage Blob Data Reader"
+  principal_id         = azurerm_user_assigned_identity.loader.principal_id
+  principal_type       = "ServicePrincipal"
+}
+
+resource "azurerm_role_assignment" "operator_blob_contributor" {
+  scope                = azurerm_storage_container.data.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = var.operator_object_id
+  principal_type       = "User"
+}
+
+# --- Postgres (ADR-0002, ADR-0010) ----------------------------------------
+
+# About $13/month plus storage. Public endpoint, but Entra-only: there is no
+# password, so reaching the port gets nobody in without a token for an admin or
+# the app's identity. TLS is required by default (require_secure_transport = on).
+# tflint-ignore: azurerm_resources_missing_prevent_destroy # The loader rebuilds it from Blob; teardown must work. tf_risk.py BLOCKs a replace.
+resource "azurerm_postgresql_flexible_server" "this" {
+  name                  = "psql-olist-agent-${local.suffix}"
+  resource_group_name   = local.rg
+  location              = local.location
+  version               = "17"
+  sku_name              = "B_Standard_B1ms"
+  storage_mb            = 32768
+  backup_retention_days = 7
+  # No high_availability block: a standby doubles the bill.
+
+  authentication {
+    active_directory_auth_enabled = true
+    password_auth_enabled         = false
+    tenant_id                     = data.azurerm_client_config.current.tenant_id
+  }
+}
+
+# The server takes one operation at a time and rejects the rest ("another operation is
+# in progress"), so the four resources below are chained with depends_on.
+
+# Allowlisted for P3's embeddings, not created: the loader would need to CREATE EXTENSION.
+resource "azurerm_postgresql_flexible_server_configuration" "extensions" {
+  name      = "azure.extensions"
+  server_id = azurerm_postgresql_flexible_server.this.id
+  value     = "VECTOR"
+}
+
+# 0.0.0.0 is Azure's "allow Azure services" rule (ADR-0010): Container Apps without a
+# VNet have no fixed outbound IPs. No other range is opened.
+resource "azurerm_postgresql_flexible_server_firewall_rule" "azure_services" {
+  name             = "AllowAllAzureServicesAndResourcesWithinAzureIps"
+  server_id        = azurerm_postgresql_flexible_server.this.id
+  start_ip_address = "0.0.0.0"
+  end_ip_address   = "0.0.0.0"
+
+  depends_on = [azurerm_postgresql_flexible_server_configuration.extensions]
+}
+
+# The principal name becomes the Postgres role name: connect as that user with a token.
+resource "azurerm_postgresql_flexible_server_active_directory_administrator" "loader" {
+  server_name         = azurerm_postgresql_flexible_server.this.name
+  resource_group_name = local.rg
+  tenant_id           = data.azurerm_client_config.current.tenant_id
+  object_id           = azurerm_user_assigned_identity.loader.principal_id
+  principal_name      = azurerm_user_assigned_identity.loader.name
+  principal_type      = "ServicePrincipal"
+
+  depends_on = [azurerm_postgresql_flexible_server_firewall_rule.azure_services]
+}
+
+# You, for debugging through the toolbox: connect as user "operator" with
+# `az account get-access-token --resource-type oss-rdbms` as the password.
+resource "azurerm_postgresql_flexible_server_active_directory_administrator" "operator" {
+  server_name         = azurerm_postgresql_flexible_server.this.name
+  resource_group_name = local.rg
+  tenant_id           = data.azurerm_client_config.current.tenant_id
+  object_id           = var.operator_object_id
+  principal_name      = "operator"
+  principal_type      = "User"
+
+  depends_on = [azurerm_postgresql_flexible_server_active_directory_administrator.loader]
+}
+
+locals {
+  # Entra auth: no password in the DSN. The app and the loader add a fresh token at
+  # connect time (olist_agent.db). pgaadauth only exists in the postgres database.
+  pg_dsn = "host=${azurerm_postgresql_flexible_server.this.fqdn} dbname=postgres sslmode=require"
+}
+
+# --- Loader job -----------------------------------------------------------
+
+# Same image as the app, its own entry point. CD starts it after every deploy and fails
+# unless it succeeds. It exits 0 with "no source data" until olist.sqlite is uploaded.
+resource "azurerm_container_app_job" "loader" {
+  name                         = "job-olist-agent-loader"
+  resource_group_name          = local.rg
+  location                     = local.location
+  container_app_environment_id = azurerm_container_app_environment.this.id
+  workload_profile_name        = "Consumption"
+  replica_timeout_in_seconds   = 1800
+  replica_retry_limit          = 1 # The load is idempotent; one retry covers a transient failure.
+
+  manual_trigger_config {
+    parallelism              = 1
+    replica_completion_count = 1
+  }
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.loader.id]
+  }
+
+  registry {
+    server   = azurerm_container_registry.this.login_server
+    identity = azurerm_user_assigned_identity.loader.id
+  }
+
+  template {
+    container {
+      name = "loader"
+      # Placeholder until CD's first `az containerapp job update --image`; never started.
+      image   = "mcr.microsoft.com/dotnet/samples:aspnetapp"
+      command = ["python", "-m", "olist_agent.loader"]
+      cpu     = 0.5
+      memory  = "1Gi"
+
+      env {
+        name  = "DATABASE_URL"
+        value = "${local.pg_dsn} user=${azurerm_user_assigned_identity.loader.name}"
+      }
+      env {
+        name  = "AZURE_CLIENT_ID"
+        value = azurerm_user_assigned_identity.loader.client_id
+      }
+      env {
+        name  = "OLIST_BLOB_URL"
+        value = "${azurerm_storage_account.data.primary_blob_endpoint}${azurerm_storage_container.data.name}/olist.sqlite"
+      }
+      # The app's role: created from its identity's object ID, granted read on sim only.
+      env {
+        name  = "APP_DB_ROLE"
+        value = azurerm_user_assigned_identity.app.name
+      }
+      env {
+        name  = "APP_DB_PRINCIPAL_ID"
+        value = azurerm_user_assigned_identity.app.principal_id
+      }
+    }
+  }
+
+  # As for the app: CD owns the image.
+  lifecycle {
+    ignore_changes = [template[0].container[0].image]
+  }
+
+  depends_on = [
+    azurerm_role_assignment.loader_acr_pull,
+    azurerm_role_assignment.loader_blob_reader,
+    azurerm_postgresql_flexible_server_active_directory_administrator.loader,
+  ]
 }
 
 # --- Cost guardrail -------------------------------------------------------
@@ -234,6 +467,10 @@ output "acr_login_server" {
 
 output "container_app_name" {
   value = azurerm_container_app.app.name
+}
+
+output "loader_job_name" {
+  value = azurerm_container_app_job.loader.name
 }
 
 output "app_url" {

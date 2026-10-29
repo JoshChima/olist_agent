@@ -26,7 +26,7 @@
 
 **Funnel stage** — Position of a marketing lead: MQL (first contact) → closed deal (won) → active seller.
 
-**Active seller** — A seller with at least one order at the clock. The last funnel stage. Avoid: "live seller".
+**Active seller** — A seller from a closed deal with at least one order at the clock. The last funnel stage. Avoid: "live seller".
 
 **Finding** — An agent's persisted output for a clock window, e.g. an anomaly investigation or a product review summary.
 
