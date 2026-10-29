@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { FIRST_DAY, LAST_DAY, useClock } from "./clock";
 import { Explore } from "./Explore";
 import { Orders } from "./Orders";
+import { Funnel } from "./Funnel";
 
 function App() {
   const [clock, setClock] = useClock();
@@ -18,6 +19,7 @@ function App() {
   const routes: Record<string, ReactNode> = {
     "/explore": <Explore clock={clock} />,
     "/orders": <Orders clock={clock} />,
+    "/funnel": <Funnel clock={clock} />,
   };
   const page = routes[location.pathname] ?? null;
 
@@ -27,6 +29,7 @@ function App() {
       <nav style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
         <a href={`/explore?clock=${clock}`}>Explorer</a>
         <a href={`/orders?clock=${clock}`}>Orders</a>
+        <a href={`/funnel?clock=${clock}`}>Funnel</a>
         <label>
           Clock{" "}
           <input

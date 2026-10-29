@@ -172,6 +172,33 @@ def order_dashboard(clock: Clock) -> dict[str, Any]:
         }
 
 
+@app.get("/api/funnel")
+def funnel(clock: Clock) -> dict[str, Any]:
+    """MQL -> closed deal -> active seller (GLOSSARY.md "Funnel stage"), cumulative at the clock."""
+    with db.at_clock(clock) as conn:
+        counts = conn.execute(
+            "select (select count(*) from sim.leads_qualified),"
+            " (select count(*) from sim.leads_closed),"
+            # An active seller has an order at the clock; only those from a closed deal count.
+            " (select count(distinct seller_id) from sim.leads_closed"
+            "   where seller_id in (select seller_id from sim.order_items))"
+        ).fetchone() or (0, 0, 0)
+        monthly = conn.execute(
+            "select to_char(first_contact_date, 'YYYY-MM'), coalesce(origin, 'unknown'), count(*)"
+            " from sim.leads_qualified group by 1, 2 order by 1, 2"
+        ).fetchall()
+    stages = [
+        {"stage": name, "count": n, "conversion": n / prev if prev else None}
+        for name, n, prev in zip(
+            ["mql", "closed_deal", "active_seller"], counts, [0, *counts], strict=False
+        )
+    ]
+    return {
+        "stages": stages,
+        "monthly_mqls": [{"month": m, "origin": o, "mqls": n} for m, o, n in monthly],
+    }
+
+
 class SPAStaticFiles(StaticFiles):
     """Serves index.html for unknown paths so client-side routes deep-link."""
 
