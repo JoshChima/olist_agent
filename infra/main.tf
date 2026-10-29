@@ -276,9 +276,11 @@ resource "azurerm_role_assignment" "operator_blob_contributor" {
 # the app's identity. TLS is required by default (require_secure_transport = on).
 # tflint-ignore: azurerm_resources_missing_prevent_destroy # The loader rebuilds it from Blob; teardown must work. tf_risk.py BLOCKs a replace.
 resource "azurerm_postgresql_flexible_server" "this" {
-  name                  = "psql-olist-agent-${local.suffix}"
-  resource_group_name   = local.rg
-  location              = local.location
+  name                = "psql-olist-agent-${local.suffix}"
+  resource_group_name = local.rg
+  # East US refuses new Flexible Servers for this subscription ("Provisioning is restricted
+  # in this region"), so the server sits next door. Everything else stays in East US.
+  location              = "eastus2"
   version               = "17"
   sku_name              = "B_Standard_B1ms"
   storage_mb            = 32768
