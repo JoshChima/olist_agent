@@ -172,6 +172,13 @@ def order_dashboard(clock: Clock) -> dict[str, Any]:
         }
 
 
+# An active seller has an order at the clock; only those from a closed deal count.
+ACTIVE_SELLERS = """
+select count(distinct seller_id) from sim.leads_closed
+where seller_id in (select seller_id from sim.order_items)
+"""
+
+
 @app.get("/api/funnel")
 def funnel(clock: Clock) -> dict[str, Any]:
     """MQL -> closed deal -> active seller (GLOSSARY.md "Funnel stage"), cumulative at the clock."""
@@ -179,9 +186,7 @@ def funnel(clock: Clock) -> dict[str, Any]:
         counts = conn.execute(
             "select (select count(*) from sim.leads_qualified),"
             " (select count(*) from sim.leads_closed),"
-            # An active seller has an order at the clock; only those from a closed deal count.
-            " (select count(distinct seller_id) from sim.leads_closed"
-            "   where seller_id in (select seller_id from sim.order_items))"
+            f" ({ACTIVE_SELLERS})"
         ).fetchone() or (0, 0, 0)
         monthly = conn.execute(
             "select to_char(first_contact_date, 'YYYY-MM'), coalesce(origin, 'unknown'), count(*)"
@@ -197,6 +202,44 @@ def funnel(clock: Clock) -> dict[str, Any]:
         "stages": stages,
         "monthly_mqls": [{"month": m, "origin": o, "mqls": n} for m, o, n in monthly],
     }
+
+
+# Everything the delta event counts, cumulative at the clock. Each count only grows as the
+# clock moves forward, so the counts at `to` minus those at `from` are what happened in
+# between, by the same definitions as the dashboards, and adjacent windows add up.
+DELTA_COUNTS = f"""
+select
+    (select count(*) from sim.orders) as new_orders,
+    -- Repaired timestamps, empty until they pass the clock.
+    (select count(order_approved_at) from sim.orders) as approved,
+    (select count(order_delivered_carrier_date) from sim.orders) as shipped,
+    (select count(order_delivered_customer_date) from sim.orders) as delivered,
+    -- Shown once the estimated delivery date passes (derived status).
+    (select count(*) from sim.orders where order_status in ('canceled', 'unavailable'))
+        as canceled_or_unavailable,
+    (select count(*) from sim.order_reviews) as new_reviews,
+    (select count(*) from sim.leads_qualified) as new_mqls,
+    (select count(*) from sim.leads_closed) as deals_closed,
+    ({ACTIVE_SELLERS}) as new_active_sellers
+"""
+
+
+@app.get("/api/delta")
+def delta_event(from_: Annotated[date, Query(alias="from")], to: date) -> dict[str, Any]:
+    """The delta event for the clock window from the day after `from` up to `to` (GLOSSARY.md).
+
+    Computed on demand from the sim views at both clocks; nothing is stored.
+    """
+    clock_param(from_)
+    clock_param(to)
+    if to <= from_:
+        raise HTTPException(422, "to must be after from")
+    counts = []
+    for clock in (from_, to):
+        with db.at_clock(clock) as conn:
+            counts.append(conn.cursor(row_factory=dict_row).execute(DELTA_COUNTS).fetchone() or {})
+    before, after = counts
+    return {"from": from_, "to": to, "counts": {k: after[k] - before[k] for k in after}}
 
 
 class SPAStaticFiles(StaticFiles):
