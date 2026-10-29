@@ -5,15 +5,19 @@ requires-python = ">=3.13"
 dependencies = [
     "azure-monitor-opentelemetry>=1.8.11",
     "fastapi>=0.146.0",
+    "psycopg-pool>=3.3.3",
+    "psycopg[binary]>=3.3.6",
     "uvicorn>=0.54.0",
 ]
 
 [dependency-groups]
 dev = [
     "httpx2>=2.14.0",
+    "hypothesis>=6.170.13",
     "pyright>=1.1.414",
     "pytest>=9.1.1",
     "ruff>=0.17.1",
+    "testcontainers>=4.15.0",
 ]
 
 [tool.ruff]
