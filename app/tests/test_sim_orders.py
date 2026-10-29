@@ -116,8 +116,23 @@ def olist(draw: st.DrawFn) -> dict[str, list[dict[str, Any]]]:
         for o in os
         if sellers and draw(st.booleans())
     ]
+    # Leads with and without a closed deal; deals with and without an order (via items above).
+    leads = draw(
+        st.lists(
+            st.fixed_dictionaries(
+                {
+                    "mql_id": hex_id,
+                    "first_contact_date": purchase,
+                    "origin": st.sampled_from(["organic_search", "paid_search", None]),
+                }
+            ),
+            max_size=10,
+            unique_by=lambda lead: lead["mql_id"],
+        )
+    )
+    mql_ids = iter([lead["mql_id"] for lead in leads])
     deals = [
-        {"mql_id": draw(hex_id), "seller_id": s, "won_date": won}
+        {"mql_id": next(mql_ids, None) or draw(hex_id), "seller_id": s, "won_date": won}
         for s in sellers
         if (won := draw(st.none() | purchase))
     ]
@@ -127,6 +142,7 @@ def olist(draw: st.DrawFn) -> dict[str, list[dict[str, Any]]]:
         "customers": customers,
         "sellers": [{"seller_id": s} for s in sellers],
         "order_items": items,
+        "leads_qualified": leads,
         "leads_closed": deals,
         # Static tables. Geolocation has many rows per zip prefix.
         "products": [{"product_id": p} for p in draw(st.lists(hex_id, max_size=5))],
@@ -140,6 +156,7 @@ def olist(draw: st.DrawFn) -> dict[str, list[dict[str, Any]]]:
 
 
 STATIC = ["products", "geolocation", "product_category_name_translation"]
+TIMED = ["order_reviews", "customers", "sellers", "leads_qualified", "leads_closed"]
 
 
 def seller_first_activity(data: dict[str, list[dict[str, Any]]]) -> dict[str, datetime]:
@@ -164,7 +181,7 @@ def counts(conn: psycopg.Connection[Any], views: list[str]) -> dict[str, int]:
 
 @settings(max_examples=25, deadline=None)
 @given(data=olist(), clocks=st.lists(st.dates(FIRST_DAY, LAST_DAY), min_size=1, max_size=5))
-def test_reviews_customers_sellers_and_static_tables_at_the_clock(
+def test_reviews_customers_sellers_leads_and_static_tables_at_the_clock(
     pg: Pg, load: Load, data: dict[str, list[dict[str, Any]]], clocks: list[date]
 ) -> None:
     load(**{t: as_text(rows) for t, rows in data.items()})
@@ -172,9 +189,7 @@ def test_reviews_customers_sellers_and_static_tables_at_the_clock(
     static = {t: len(data[t]) for t in STATIC}
     with psycopg.connect(pg.app, autocommit=True) as conn:
         # With no clock: nothing time-dimensioned, and every static row.
-        assert counts(conn, ["order_reviews", "customers", "sellers"]) == dict.fromkeys(
-            ["order_reviews", "customers", "sellers"], 0
-        )
+        assert counts(conn, TIMED) == dict.fromkeys(TIMED, 0)
         assert counts(conn, STATIC) == static
         for clock in clocks:
             end = datetime.combine(clock + timedelta(days=1), time())
@@ -186,6 +201,8 @@ def test_reviews_customers_sellers_and_static_tables_at_the_clock(
                 reviews = {(r, o): a for r, o, a in rows}
                 customers = {r[0] for r in conn.execute("select customer_id from sim.customers")}
                 sellers = {r[0] for r in conn.execute("select seller_id from sim.sellers")}
+                mqls = {r[0] for r in conn.execute("select mql_id from sim.leads_qualified")}
+                won = {r[0] for r in conn.execute("select mql_id from sim.leads_closed")}
                 assert counts(conn, STATIC) == static
             assert reviews == {
                 (r["review_id"], r["order_id"]): (
@@ -196,6 +213,10 @@ def test_reviews_customers_sellers_and_static_tables_at_the_clock(
             }
             assert customers == {o["customer_id"] for o in data["orders"] if o[PURCHASE] < end}
             assert sellers == {s for s, t in first_activity.items() if t < end}
+            assert mqls == {
+                m["mql_id"] for m in data["leads_qualified"] if m["first_contact_date"] < end
+            }
+            assert won == {d["mql_id"] for d in data["leads_closed"] if d["won_date"] < end}
 
 
 LIFECYCLE = (
