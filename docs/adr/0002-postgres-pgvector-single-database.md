@@ -13,7 +13,8 @@ The app needs to store several kinds of data:
 The dataset ships as SQLite, but SQLite on an Azure file share corrupts under concurrent access because file locking over SMB is unreliable. Azure AI Search would add about $75/month.
 
 ## Decision
-Use Azure Database for PostgreSQL Flexible Server, smallest burstable tier, in East US, with the `vector` extension enabled.
+Use Azure Database for PostgreSQL Flexible Server, smallest burstable tier, in East US 2, with the `vector` extension enabled.
+- Amended 2026-10-29: the first deploy (P1) found East US closed to new Flexible Servers for this subscription ("Provisioning is restricted in this region"). The server moved to East US 2, the nearest region that offers B1ms on Postgres 17. The rest of the app stays in East US.
 - The SQLite file is only a load source. It is uploaded once to Blob storage and imported by an idempotent Container Apps Job.
 - Local development runs the same Postgres in docker-compose.
 

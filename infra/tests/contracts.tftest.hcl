@@ -53,6 +53,12 @@ run "postgres_is_the_smallest_tier" {
     condition     = length(azurerm_postgresql_flexible_server.this.high_availability) == 0
     error_message = "No HA standby: it doubles the Postgres bill."
   }
+
+  # ADR-0002: East US is restricted for Flexible Server on this subscription; CD failed there.
+  assert {
+    condition     = azurerm_postgresql_flexible_server.this.location == "eastus2"
+    error_message = "Postgres must stay in East US 2: East US refuses new Flexible Servers (ADR-0002)."
+  }
 }
 
 run "data_storage_is_entra_only" {
