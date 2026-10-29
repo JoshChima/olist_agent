@@ -41,6 +41,7 @@ orders = st.lists(
     unique_by=lambda o: o["order_id"],
 )
 RANK = {"purchased": 0, "approved": 1, "shipped": 2, "delivered": 3, **dict.fromkeys(FINAL, 4)}
+STAGES = ("order_approved_at", "order_delivered_carrier_date", "order_delivered_customer_date")
 
 
 @settings(max_examples=25, deadline=None)
@@ -56,6 +57,7 @@ def test_orders_never_leak_the_future(
         order_payments=[{"order_id": i, "payment_sequential": 1} for i in ids],
     )
     rank: dict[str, int] = {}
+    by_id = {o["order_id"]: o for o in orders}
     with psycopg.connect(pg.app, autocommit=True) as conn:
         assert conn.execute("select count(*) from sim.orders").fetchone() == (0,)
         for clock in sorted(clocks):
@@ -64,15 +66,20 @@ def test_orders_never_leak_the_future(
                 rows = conn.execute(
                     "select order_id, order_purchase_timestamp, order_approved_at,"
                     " order_delivered_carrier_date, order_delivered_customer_date,"
-                    " order_status, order_estimated_delivery_date from sim.orders"
+                    " order_status, order_estimated_delivery_date, repaired from sim.orders"
                 ).fetchall()
                 items = conn.execute("select order_id from sim.order_items").fetchall()
                 payments = conn.execute("select order_id from sim.order_payments").fetchall()
             end = datetime.combine(clock + timedelta(days=1), time())
             seen = {r[0] for r in rows}
             assert seen == {o["order_id"] for o in orders if o[PURCHASE] < end}
-            for order_id, *lifecycle, status, estimated in rows:
+            for order_id, *lifecycle, status, estimated, repaired in rows:
                 assert all(ts is None or ts < end for ts in lifecycle)
+                # Flagged exactly when a shown stage isn't the source's, so the flag tells
+                # nothing about stages still after the clock.
+                source = by_id[order_id]
+                shown = zip(STAGES, lifecycle[1:], strict=True)
+                assert repaired == any(ts is not None and ts != source[s] for s, ts in shown)
                 if status in FINAL:
                     assert estimated < end
                 # Clocks ascend, so status never moves backwards.
@@ -269,12 +276,13 @@ def test_out_of_order_timestamps_are_repaired(pg: Pg, load: Load) -> None:
     query = "select order_status, order_delivered_customer_date, repaired from sim.orders"
     days = [at(pg, date(2017, 3, d), query)[0] for d in range(1, 8)]
     pickup = datetime(2017, 3, 6, 9)
+    # Flagged only once the repaired delivery shows, so the flag never hints at the future.
     assert days == [
-        ("purchased", None, True),
-        ("approved", None, True),
-        ("approved", None, True),
-        ("approved", None, True),  # the source says delivered by now
-        ("approved", None, True),
+        ("purchased", None, False),
+        ("approved", None, False),
+        ("approved", None, False),
+        ("approved", None, False),  # the source says delivered by now
+        ("approved", None, False),
         ("delivered", pickup, True),
         ("delivered", pickup, True),
     ]

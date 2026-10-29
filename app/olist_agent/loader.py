@@ -44,9 +44,7 @@ TABLES = [
 REPAIR_ORDERS = """
 truncate raw.order_lifecycle;
 insert into raw.order_lifecycle
-select order_id, a.ts, c.ts, d.ts,
-    (a.ts, c.ts, d.ts) is distinct from
-    (order_approved_at, order_delivered_carrier_date, order_delivered_customer_date)
+select order_id, a.ts, c.ts, d.ts
 from raw.orders,
     lateral (select case when order_approved_at is not null
         then greatest(order_approved_at, order_purchase_timestamp) end) a(ts),

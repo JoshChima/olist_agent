@@ -9,8 +9,7 @@ CREATE TABLE IF NOT EXISTS raw.order_lifecycle (
     order_id text,
     order_approved_at timestamp,
     order_delivered_carrier_date timestamp,
-    order_delivered_customer_date timestamp,
-    repaired boolean
+    order_delivered_customer_date timestamp
 );
 
 -- Lifecycle fields later than the clock read as NULL, and order_status is the derived
@@ -35,7 +34,16 @@ SELECT
     CASE WHEN l.order_delivered_customer_date < c.day_end THEN l.order_delivered_customer_date END
         AS order_delivered_customer_date,
     o.order_estimated_delivery_date,
-    l.repaired
+    -- Repaired once a shown stage differs from the source's. A repaired stage is no earlier
+    -- than the stages it was out of order with, so all of them have passed the clock.
+    coalesce(
+        (l.order_approved_at < c.day_end AND l.order_approved_at <> o.order_approved_at)
+        OR (l.order_delivered_carrier_date < c.day_end
+            AND l.order_delivered_carrier_date <> o.order_delivered_carrier_date)
+        OR (l.order_delivered_customer_date < c.day_end
+            AND l.order_delivered_customer_date <> o.order_delivered_customer_date),
+        false
+    ) AS repaired
 FROM raw.orders o
 JOIN raw.order_lifecycle l USING (order_id)
 CROSS JOIN (SELECT nullif(current_setting('sim.clock', true), '')::date + 1) c(day_end)
@@ -43,6 +51,9 @@ WHERE o.order_purchase_timestamp < c.day_end;
 
 -- Items and payments are governed by their order's purchase. Their own dates (the shipping
 -- limit) are known at purchase, so they show.
+-- Databases loaded before the flag moved into the view above.
+ALTER TABLE raw.order_lifecycle DROP COLUMN IF EXISTS repaired;
+
 CREATE OR REPLACE VIEW sim.order_items AS
 SELECT * FROM raw.order_items WHERE order_id IN (SELECT order_id FROM sim.orders);
 
