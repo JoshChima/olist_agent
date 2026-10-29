@@ -99,14 +99,15 @@ def explore_rows(
             raise HTTPException(422, f"unknown sort column {sort!r}")
         v = sql.Identifier("sim", view)
         (total,) = conn.execute(sql.SQL("select count(*) from {}").format(v)).fetchone() or (0,)
-        # The first column breaks ties, so pages don't overlap.
+        # Every column breaks ties, so pages don't overlap: first columns aren't always keys
+        # (review ids repeat, geolocation has many rows per zip prefix).
         query = sql.SQL("select * from {} order by {} {} nulls last, {} limit %s offset %s")
         rows = conn.execute(
             query.format(
                 v,
                 sql.Identifier(sort),
                 sql.SQL("desc" if desc else "asc"),
-                sql.Identifier(columns[0]),
+                sql.SQL(", ").join(map(sql.Identifier, columns)),
             ),
             [PAGE_SIZE, (page - 1) * PAGE_SIZE],
         ).fetchall()

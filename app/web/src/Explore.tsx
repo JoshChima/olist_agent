@@ -3,20 +3,37 @@ import { useEffect, useState } from "react";
 type Page = { columns: string[]; rows: unknown[][]; total: number; page: number; page_size: number };
 type Sort = { column?: string; desc: boolean };
 
-/** sim.orders at the clock: 50 rows a page, sortable columns, total row count. */
+/** A sim view at the clock: 50 rows a page, sortable columns, total row count. */
 export function Explore({ clock }: { clock: string }) {
+  const [views, setViews] = useState<string[]>([]);
+  const [view, setView] = useState("orders");
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<Sort>({ desc: false });
   const [data, setData] = useState<Page | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    fetch("/api/explore")
+      .then((r) => r.json())
+      .then((d: { views: string[] }) => setViews(d.views))
+      .catch(() => setViews([]));
+  }, []);
+
   useEffect(() => setPage(1), [clock]); // a rewind can leave fewer pages than before
+
+  const pick = (v: string) => {
+    setView(v);
+    setPage(1);
+    setSort({ desc: false });
+    setData(null);
+    setError(null);
+  };
 
   useEffect(() => {
     const q = new URLSearchParams({ clock, page: String(page), desc: String(sort.desc) });
     if (sort.column) q.set("sort", sort.column);
     let current = true;
-    fetch(`/api/explore/orders?${q}`)
+    fetch(`/api/explore/${encodeURIComponent(view)}?${q}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${r.status} ${r.statusText}`))))
       .then((d: Page) => {
         if (current) {
@@ -30,17 +47,41 @@ export function Explore({ clock }: { clock: string }) {
     return () => {
       current = false;
     };
-  }, [clock, page, sort]);
+  }, [view, clock, page, sort]);
 
-  if (error) return <p role="alert">Couldn't load orders: {error}</p>;
-  if (!data) return <p>Loading…</p>;
+  const picker = (
+    <label>
+      View{" "}
+      <select value={view} onChange={(e) => pick(e.target.value)}>
+        {(views.length ? views : [view]).map((v) => (
+          <option key={v}>{v}</option>
+        ))}
+      </select>
+    </label>
+  );
+  if (error)
+    return (
+      <section>
+        {picker}
+        <p role="alert">
+          Couldn't load {view}: {error}
+        </p>
+      </section>
+    );
+  if (!data)
+    return (
+      <section>
+        {picker}
+        <p>Loading…</p>
+      </section>
+    );
   const pages = Math.max(1, Math.ceil(data.total / data.page_size));
   const sortBy = (column: string) =>
     setSort((s) => ({ column, desc: s.column === column ? !s.desc : false }));
 
   return (
     <section>
-      <h2>orders</h2>
+      {picker}
       <p>
         <strong>{data.total.toLocaleString()}</strong> rows as of {clock}
       </p>

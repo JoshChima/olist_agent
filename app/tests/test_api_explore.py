@@ -19,11 +19,18 @@ ORDERS = [
     {"order_id": "jan1", "order_purchase_timestamp": "2017-01-01 23:59:59"},
     {"order_id": "late", "order_purchase_timestamp": "2018-10-18 00:00:00"},
 ]
+# One review id on all 60 orders of 2017-01-02 (review ids aren't unique in the source).
+REVIEWS = [
+    {"review_id": "dup", "order_id": f"jan2-{i:02}", "review_creation_date": "2017-01-02 12:00:00"}
+    for i in range(60)
+]
 
 
 @pytest.fixture(scope="module")
 def source(pg: Pg, tmp_path_factory: pytest.TempPathFactory) -> Path:
-    path = write_olist(tmp_path_factory.mktemp("api") / "olist.sqlite", orders=ORDERS)
+    path = write_olist(
+        tmp_path_factory.mktemp("api") / "olist.sqlite", orders=ORDERS, order_reviews=REVIEWS
+    )
     loader.load(pg.admin, path, APP_ROLE, APP_ROLE)
     return path
 
@@ -45,7 +52,26 @@ def test_range_ends_are_valid_clocks(client: TestClient) -> None:
 
 
 def test_view_list_is_the_sim_views(client: TestClient) -> None:
-    assert "orders" in client.get("/api/explore").json()["views"]
+    views = client.get("/api/explore").json()["views"]
+    for v in [
+        "orders",
+        "order_reviews",
+        "customers",
+        "sellers",
+        "products",
+        "geolocation",
+        "product_category_name_translation",
+    ]:
+        assert v in views
+
+
+def test_duplicate_review_ids_page_without_overlap(client: TestClient) -> None:
+    def keys(page: int) -> set[tuple[str, str]]:
+        params = {"clock": "2017-01-02", "page": page}
+        r = client.get("/api/explore/order_reviews", params=params).json()
+        return {(row[0], row[1]) for row in r["rows"]}
+
+    assert keys(1) | keys(2) == {(r["review_id"], r["order_id"]) for r in REVIEWS}
 
 
 def test_rows_page_50_at_a_time_with_total(client: TestClient) -> None:

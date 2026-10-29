@@ -82,6 +82,7 @@ def load(
             swap = sql.SQL("truncate raw.{t}; insert into raw.{t} select * from staging.{t}")
             for t in TABLES:
                 conn.execute(swap.format(t=sql.Identifier(t)))
+            conn.execute("refresh materialized view raw.seller_first_activity")
             conn.execute("drop schema staging cascade")
             conn.execute(
                 "insert into loader.state (source_sha256, migrations_sha256) values (%s, %s)"
