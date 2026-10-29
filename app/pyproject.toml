@@ -3,7 +3,9 @@ name = "olist-agent"
 version = "0.1.0"
 requires-python = ">=3.13"
 dependencies = [
+    "azure-identity>=1.27.0",
     "azure-monitor-opentelemetry>=1.8.11",
+    "azure-storage-blob>=12.31.0",
     "fastapi>=0.146.0",
     "psycopg-pool>=3.3.3",
     "psycopg[binary]>=3.3.6",
