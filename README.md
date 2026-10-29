@@ -48,11 +48,11 @@ You need `az`, `gh`, `terraform` >= 1.10, and an Azure subscription where you ar
    terraform -chdir=infra/bootstrap apply -var github_repository=<owner>/olist_agent \
      -var github_sub_prefix="$(gh api repos/<owner>/olist_agent/actions/oidc/customization/sub --jq .sub_claim_prefix)"
    ```
-   Then move the state into the `tfstate-bootstrap` container, which only you can access, and delete the local copy once it's confirmed:
+   Then move the state into the `tfstate-bootstrap` container, which only you can access, and delete the local copy once it's confirmed. Read the storage account name *before* removing the override: once it's gone, `terraform output` fails with "Backend initialization required".
    ```bash
+   account="$(terraform -chdir=infra/bootstrap output -raw tfstate_storage_account)"
    rm infra/bootstrap/local_override.tf
-   terraform -chdir=infra/bootstrap init -migrate-state \
-     -backend-config=storage_account_name="$(terraform -chdir=infra/bootstrap output -state=terraform.tfstate -raw tfstate_storage_account)"
+   terraform -chdir=infra/bootstrap init -migrate-state -backend-config=storage_account_name="$account"
    terraform -chdir=infra/bootstrap state list   # now read from Azure
    ```
    Later bootstrap runs go through `scripts/tf-toolbox.sh` (see Running Terraform locally).
@@ -84,14 +84,29 @@ terraform -chdir=infra plan -var budget_alert_email=you@example.com
 
 - **Two Terraform roots.** Bootstrap creates what the pipeline needs before it can run: the state backend, plus the identity it logs in as. Nothing in `infra/` can do that for itself.
 - **OIDC, no secrets.** GitHub mints a short-lived token per job, and Azure trusts it only for a matching subject. There are two identities:
-  - `deploy` is trusted only on `refs/heads/main`. It has Contributor on the app RG, plus RBAC Administrator restricted by an ABAC condition so that it can only grant `AcrPull`, `Storage Blob Data Reader` and `Storage Blob Data Contributor`.
-  - `plan` is trusted only for `pull_request`. It is read-only.
+  - `deploy` is trusted only on `refs/heads/main` and applies `infra/`.
+  - `plan` is trusted only for `pull_request`. It can't change anything, but it can read, and that includes container-app secrets (see the table below).
 
-  Fork PRs get no token at all.
+  Fork PRs get no token at all. The exact roles are in the table under Bootstrap role assignments.
 - **Logs and PR comments are public.** Workflows read Azure IDs from secrets, and Terraform output goes through `scripts/redact.py`, which fails the job if an ID survives redaction. For agents, the `scripts/guard_ids.py` hook blocks GitHub and Linear posts that contain a known ID.
 - **Workload-profiles environment from day one.** P5's serverless GPU needs it, and an environment can't be converted after it's created.
 - **Terraform owns infrastructure; CD owns the image.** The container app ignores changes to `image`. The first apply runs a public placeholder that also listens on 8080, and every deploy after that is `az containerapp update --image <acr>/olist-agent:<sha>`.
 - **Cost.** ACR Basic is about $5 a month. The app scales to zero, Log Analytics is capped at 1 GB a day, and an RG budget alerts at 80% actual and 100% forecast of $50. A budget alerts but never stops spending.
+
+## Bootstrap role assignments
+
+Every role assignment `infra/bootstrap/main.tf` creates, with the reason from its code comments. The app RG is `rg-olist-agent`; `tfstate` and `tfstate-bootstrap` are containers in the state storage account.
+
+| Principal | Role | Scope | Why |
+|---|---|---|---|
+| deploy identity | Contributor | app RG | Creates and changes the app's resources when CD applies `infra/`. |
+| deploy identity | Role Based Access Control Administrator, with an ABAC condition | app RG | Terraform grants roles (e.g. AcrPull to the app's identity), which Contributor can't do. User Access Administrator could, but could also make itself Owner. The condition lets this identity grant or revoke **only** AcrPull, Storage Blob Data Reader and Storage Blob Data Contributor. |
+| deploy identity | Storage Blob Data Contributor | `tfstate` container | Reads, writes and locks the `infra/` state. It has nothing on `tfstate-bootstrap`: CI must never be able to edit the state that defines its own access. |
+| plan identity | Reader | app RG | A PR branch runs whatever code it contains, so plan must not be able to change anything. |
+| plan identity | Custom role `olist-agent terraform plan: list container app secrets` (defined in bootstrap, assignable only in the app RG; one action, `Microsoft.App/containerApps/listSecrets/action`) | app RG | The azurerm provider calls listSecrets when it refreshes a container app, and Reader doesn't include that action, so plan would fail without it. This means the plan identity **can read container-app secrets**; it is not read-only in the strict sense. |
+| plan identity | Storage Blob Data Reader | `tfstate` container | Reads the `infra/` state. CI runs plan with `-lock=false`, because taking the lock (a blob lease) is a write. |
+| you (the developer) | Storage Blob Data Contributor | `tfstate-bootstrap` container | Bootstrap's own state. Only you can read or write it; the CI identities can't, because this state describes their permissions. |
+| you (the developer) | Storage Blob Data Contributor | `tfstate` container | Owner is a control-plane role and doesn't include reading blobs. You need this to run `terraform plan` against the remote state from your machine. |
 
 ## Running Terraform locally
 
