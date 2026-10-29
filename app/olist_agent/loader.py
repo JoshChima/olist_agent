@@ -86,21 +86,24 @@ def load(
         if conn.execute("select to_regclass('loader.state')").fetchone() != (None,):
             state = conn.execute("select source_sha256, migrations_sha256 from loader.state")
             state = state.fetchone()
-        if source_sha and state == (source_sha, migrations):
-            return "unchanged"
+        unchanged = source_sha is not None and state == (source_sha, migrations)
 
-        # Its own transaction: CREATE OR REPLACE VIEW locks the view, and readers shouldn't
-        # wait out the whole load below.
+        # One transaction: readers see the old views and data until the commit, never a
+        # partial load or new views over old data.
+        # ponytail: CREATE OR REPLACE VIEW locks the views until the commit, so readers wait
+        # out the whole load (seconds for the full dataset). Split off the views if that hurts.
         with conn.transaction():
-            for m in MIGRATIONS:
-                conn.execute(m.read_bytes())
+            if not unchanged:
+                for m in MIGRATIONS:
+                    conn.execute(m.read_bytes())
+            # Every run, so a changed app principal or a lost grant gets fixed.
             if app_role:
                 ensure_app_role(conn, app_role, app_password, app_principal_id)
-        if source is None or source_sha is None:
-            return "no source data"
+            if unchanged:
+                return "unchanged"
+            if source is None or source_sha is None:
+                return "no source data"
 
-        # One transaction: readers see the old data until the commit, never a partial load.
-        with conn.transaction():
             conn.execute("create schema staging")
             with closing(sqlite3.connect(source)) as src:
                 for t in TABLES:

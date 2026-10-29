@@ -1,4 +1,5 @@
 import os
+import sqlite3
 import subprocess
 import sys
 import uuid
@@ -11,13 +12,42 @@ from azure.core.exceptions import ResourceNotFoundError
 from psycopg.conninfo import make_conninfo
 
 from olist_agent import loader
-from tests.conftest import Load, Pg
+from tests.conftest import APP_ROLE, Load, Pg
 
 
 def test_unchanged_second_run_does_nothing(load: Load) -> None:
     orders = [{"order_id": uuid.uuid4().hex, "order_purchase_timestamp": "2017-01-01 10:00:00"}]
     assert load(orders=orders) == "loaded"
     assert load(orders=orders) == "unchanged"
+
+
+def test_an_unchanged_run_still_fixes_the_app_role(pg: Pg, load: Load) -> None:
+    orders = [{"order_id": uuid.uuid4().hex, "order_purchase_timestamp": "2017-01-01 10:00:00"}]
+    load(orders=orders)
+    with psycopg.connect(pg.admin, autocommit=True) as c:
+        c.execute(f"revoke sim_reader from {APP_ROLE}")
+    assert load(orders=orders) == "unchanged"
+    with psycopg.connect(pg.app) as c:
+        assert c.execute("select count(*) from sim.data_status").fetchone() == (1,)
+
+
+def test_a_failed_load_leaves_the_views_as_they_were(
+    pg: Pg, load: Load, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    load()
+    probe = tmp_path / "999_probe.sql"
+    probe.write_text("create or replace view sim.probe as select 1 as x")
+    monkeypatch.setattr(loader, "MIGRATIONS", [*loader.MIGRATIONS, probe])
+    broken = tmp_path / "olist.sqlite"
+    broken.write_bytes(b"not a sqlite file")
+    try:
+        with pytest.raises(sqlite3.DatabaseError):
+            loader.load(pg.admin, broken)
+        with psycopg.connect(pg.admin) as c:
+            assert c.execute("select to_regclass('sim.probe')").fetchone() == (None,)
+    finally:
+        with psycopg.connect(pg.admin, autocommit=True) as c:
+            c.execute("drop view if exists sim.probe")
 
 
 def run_loader(pg: Pg, source: str) -> subprocess.CompletedProcess[str]:
