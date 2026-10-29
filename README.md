@@ -109,6 +109,16 @@ scripts/tf-toolbox.sh down            # az logout and remove the container
 
 To plan `infra`, first export `TF_VAR_budget_alert_email`. It's a GitHub secret, so the script can't read it back. `apply` only accepts `bootstrap`: `infra/` is applied by CD. In Claude Code, the `terraform-operator` subagent runs these commands for you and asks before every apply.
 
+### Why apply needs the plan's sha256
+
+`terraform plan -out=file` saves the plan to a file, and `terraform apply file` carries out exactly that file. This splits reviewing a change from making it: you read the plan first, then apply what you read. Terraform also refuses the file if the state has moved since the plan was made, so a stale plan can't be applied by accident.
+
+That check doesn't say *which* plan the file is. Inside the container, an agent could run `plan` again and overwrite the file after you reviewed it, and Terraform would apply the new one without complaint. The bytes applied might not be the bytes you reviewed.
+
+The sha256 closes that gap. It's a fingerprint of the file's exact bytes: change one character and it changes completely. `plan` prints it next to the risk table, and you approve that value. `apply` recomputes the hash of the file and refuses if it differs, then re-runs the risk gate on that same file before applying. Approval and apply are tied to the same bytes, so an agent can't swap the plan, and can't approve its own: the hash it was given has to be the one you approved.
+
+Bootstrap is where this matters most. A half-landed apply left state and Azure disagreeing and broke CI's plans (ADR-0007), and bootstrap defines CI's own permissions, so a wrong apply there can change what CI is allowed to do. Nothing else applies it, so this check is the gate.
+
 ## Teardown
 
 ```bash
