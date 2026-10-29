@@ -35,6 +35,7 @@ provider "azurerm" {
     "Microsoft.App",
     "Microsoft.ContainerRegistry",
     "Microsoft.Consumption",
+    "Microsoft.DBforPostgreSQL",
     "Microsoft.Insights",
     "Microsoft.ManagedIdentity",
     "Microsoft.OperationalInsights",
@@ -91,6 +92,8 @@ locals {
   # runtime role (e.g. Key Vault Secrets User in P2).
   assignable_role_ids = [
     "7f951dda-4ed3-4680-a7ca-43fe172d538d", # AcrPull
+    "2a2b9908-6ea1-4ae2-8e65-a410df84e7d1", # Storage Blob Data Reader
+    "ba92f5b4-2d11-453d-a403-e96b0029c9fe", # Storage Blob Data Contributor
   ]
 }
 
