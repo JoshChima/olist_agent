@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { FIRST_DAY } from "./clock";
 import { dataQualityAreas } from "./dataQuality";
+import { useJson } from "./useJson";
 
 type Stage = { stage: string; count: number; conversion: number | null };
 type Funnel = { stages: Stage[]; monthly_mqls: { month: string; origin: string; mqls: number }[] };
@@ -27,26 +27,7 @@ function months(clock: string): string[] {
 
 /** MQL -> closed deal -> active seller at the clock, and MQLs a month by origin. */
 export function Funnel({ clock }: { clock: string }) {
-  const [data, setData] = useState<Funnel | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let current = true;
-    fetch(`/api/funnel?clock=${clock}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${r.status} ${r.statusText}`))))
-      .then((d: Funnel) => {
-        if (current) {
-          setData(d);
-          setError(null);
-        }
-      })
-      .catch((e: Error) => {
-        if (current) setError(e.message);
-      });
-    return () => {
-      current = false;
-    };
-  }, [clock]);
+  const { data, error } = useJson<Funnel>(`/api/funnel?clock=${clock}`);
 
   if (error) return <p role="alert">Couldn't load the funnel: {error}</p>;
   if (!data) return <p>Loading…</p>;

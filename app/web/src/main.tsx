@@ -22,10 +22,12 @@ function App() {
       .catch(() => setLoaded(false));
   }, []);
 
-  // A pathname switch is all the routing needed (no router library).
+  // A pathname switch is all the routing needed (no router library). / is the order dashboard.
+  const orders = <Orders clock={clock} />;
   const routes: Record<string, ReactNode> = {
+    "/": orders,
     "/explore": <Explore clock={clock} />,
-    "/orders": <Orders clock={clock} />,
+    "/orders": orders,
     "/funnel": <Funnel clock={clock} />,
   };
   const page = routes[location.pathname] ?? null;

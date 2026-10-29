@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useJson } from "./useJson";
 
 // The API's count keys, in display order (GLOSSARY.md "Delta event").
 const LABELS: Record<string, string> = {
@@ -13,36 +14,34 @@ const LABELS: Record<string, string> = {
   new_active_sellers: "new active sellers",
 };
 
-/** After a forward time-warp, what happened in (previous clock, clock]. A rewind fetches nothing. */
+/**
+ * After a forward time-warp from day `from` to day `to`, the delta event for the clock window
+ * [from+1 00:00, to+1 00:00). A rewind fetches nothing.
+ */
 export function DeltaStrip({ clock }: { clock: string }) {
   const prev = useRef(clock);
-  const [text, setText] = useState<string | null>(null);
+  const [warp, setWarp] = useState<{ from: string; to: string } | null>(null);
 
   useEffect(() => {
-    const from = prev.current;
-    if (clock === from) return;
+    if (clock === prev.current) return;
+    setWarp({ from: prev.current, to: clock });
     prev.current = clock;
-    if (clock < from) {
-      setText("rewound");
-      return;
-    }
-    let current = true;
-    setText(`${from} → ${clock}: loading…`);
-    fetch(`/api/delta?from=${from}&to=${clock}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${r.status} ${r.statusText}`))))
-      .then((d: { counts: Record<string, number> }) => {
-        const parts = Object.entries(LABELS).map(([k, label]) => `${d.counts[k].toLocaleString()} ${label}`);
-        if (current) setText(`${from} → ${clock}: ${parts.join(", ")}`);
-      })
-      .catch((e: Error) => {
-        if (current) setText(`${from} → ${clock}: couldn't load the delta event: ${e.message}`);
-      });
-    return () => {
-      current = false;
-    };
   }, [clock]);
 
-  if (!text) return null;
+  const url = warp && warp.to > warp.from ? `/api/delta?from=${warp.from}&to=${warp.to}` : null;
+  const { data, error, loading } = useJson<{ counts: Record<string, number> }>(url);
+
+  if (!warp) return null;
+  const at = `${warp.from} → ${warp.to}`;
+  const text = !url
+    ? "rewound"
+    : loading
+      ? `${at}: loading…`
+      : error
+        ? `${at}: couldn't load the delta event: ${error}`
+        : `${at}: ${Object.entries(LABELS)
+            .map(([k, label]) => `${data!.counts[k].toLocaleString()} ${label}`)
+            .join(", ")}`;
   return (
     <p
       role="status"

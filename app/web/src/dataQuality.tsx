@@ -1,9 +1,10 @@
 import { ReferenceArea } from "recharts";
+import { FIRST_DAY, LAST_DAY } from "./clock";
 
 // GLOSSARY.md "Data-quality window": simulated time whose data can't support business conclusions.
 export const DATA_QUALITY_WINDOWS = [
-  { from: "2016-09-04", to: "2016-12-31", label: "sparse data" },
-  { from: "2018-09-01", to: "2018-10-17", label: "collection artifact" },
+  { from: FIRST_DAY, to: "2016-12-31", label: "sparse data" },
+  { from: "2018-09-01", to: LAST_DAY, label: "collection artifact" },
 ];
 
 /**
