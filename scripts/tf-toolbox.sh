@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The terraform-operator subagent's only way to touch Azure (docs/adr/0007).
-# Runs Terraform and az inside the olist-tf container (tools/tf-toolbox), which
+# Runs Terraform and az inside this checkout's olist-tf-* container (tools/tf-toolbox), which
 # only has IPv4. The repo is mounted at /w, so bootstrap state stays on the host.
 #
 #   up                               build the image if needed, start the container
@@ -16,7 +16,9 @@ set -euo pipefail
 export MSYS_NO_PATHCONV=1 # stop Git Bash rewriting /w into C:/Program Files/Git/w
 cd "$(dirname "$0")/.."
 
-NAME=olist-tf
+# One container per checkout. A shared name let `up` reuse another worktree's container,
+# so checks ran against that worktree's files.
+NAME="olist-tf-$(pwd | sha1sum | cut -c1-8)"
 # Tagged by content, so editing the Dockerfile rebuilds the image.
 IMAGE="olist-tf-toolbox:$(cat tools/tf-toolbox/Dockerfile tools/tf-toolbox/install.py | sha1sum | cut -c1-12)"
 # Looked up on demand, so `check --offline` needs neither gh nor a GitHub login (CI).
