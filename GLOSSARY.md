@@ -36,7 +36,7 @@
 
 **Cost ledger** — One Postgres row per model call (agent, model, tokens, cost, latency, clock window). Source of truth for spend caps and cost dashboards.
 
-**Toolbox** — The `olist-tf` Docker container (`tools/tf-toolbox/`) that runs Terraform and `az` against real Azure from a dev machine, driven only through `scripts/tf-toolbox.sh`. See ADR-0007.
+**Toolbox** — The `olist-tf-*` Docker container, one per checkout (`tools/tf-toolbox/`), that runs Terraform and `az` against real Azure from a dev machine, driven only through `scripts/tf-toolbox.sh`. See ADR-0007.
 
 **Risk tier** — `scripts/tf_risk.py`'s verdict on a plan: SAFE, REVIEW (identity/auth or bootstrap changes), DANGER (any delete or replace), BLOCK (delete or replace of a protected stateful resource). Shared by the terraform-operator subagent and CI.
 
