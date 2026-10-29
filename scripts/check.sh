@@ -52,9 +52,10 @@ iac() {
   scripts/tf-toolbox.sh check bootstrap --offline
   scripts/tf-toolbox.sh check infra --offline
   # The gates between agents and real Azure (ADR-0007): risk tiers, the apply gate,
-  # the subagent's Bash guard and the apply approval hook.
+  # the subagent's Bash guard, the apply approval hook and tf-toolbox.sh apply itself.
   python3 scripts/test_tf_risk.py
   python3 scripts/test_guards.py
+  python3 scripts/test_tf_toolbox.py
   dk run --rm -v "$HOST:/mnt" -w /mnt koalaman/shellcheck:v0.10.0 scripts/*.sh
   # vars.* are never masked, so anything read from them lands in the public logs.
   if grep -rnE '\{\{ *vars\.' .github/workflows; then
