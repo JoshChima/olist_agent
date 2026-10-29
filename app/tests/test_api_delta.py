@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from olist_agent import main
 from tests.conftest import Load
 
-# The window (2017-03-01, 2017-03-10]: timestamps from 03-02 00:00 up to 03-10 23:59:59.
+# from=2017-03-01, to=2017-03-10: the clock window [03-02 00:00, 03-11 00:00).
 FROM, TO = "2017-03-01", "2017-03-10"
 ORDERS = [
     # Bought and approved on the `from` day itself, so only its shipping and delivery count.
@@ -50,6 +50,8 @@ ORDERS = [
     },
     # After the window.
     {"order_id": "o5", "order_status": "shipped", "order_purchase_timestamp": "2017-03-20 10:00"},
+    # On the dataset's first day.
+    {"order_id": "o6", "order_status": "shipped", "order_purchase_timestamp": "2016-09-04 10:00"},
 ]
 ITEMS = [("o1", "s1"), ("o2", "s3"), ("o4", "s2")]
 REVIEWS = [("o1", "2017-03-09 00:00:00"), ("o4", "2017-03-01 00:00:00")]
@@ -100,8 +102,9 @@ def test_every_count_for_a_forward_window(client: TestClient) -> None:
 
 
 def test_a_window_over_the_whole_dataset_counts_everything(client: TestClient) -> None:
-    assert delta(client, "2016-09-04", "2018-10-17") == {
-        "new_orders": 5,
+    # `from` may be the day before the data, so the window takes in its first day.
+    assert delta(client, "2016-09-03", "2018-10-17") == {
+        "new_orders": 6,
         "approved": 4,
         "shipped": 2,
         "delivered": 2,
@@ -127,7 +130,8 @@ def test_adjacent_windows_add_up_to_the_window_they_cover(client: TestClient) ->
     [
         (TO, FROM),  # backward
         (FROM, FROM),  # empty
-        ("2016-09-03", TO),  # outside the dataset
+        ("2016-09-02", TO),  # outside the dataset
+        ("2016-09-02", "2016-09-03"),
         (FROM, "2018-10-18"),
     ],
 )

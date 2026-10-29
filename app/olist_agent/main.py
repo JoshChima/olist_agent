@@ -226,18 +226,25 @@ select
 
 @app.get("/api/delta")
 def delta_event(from_: Annotated[date, Query(alias="from")], to: date) -> dict[str, Any]:
-    """The delta event for the clock window from the day after `from` up to `to` (GLOSSARY.md).
+    """The delta event for the clock window [from+1 00:00, to+1 00:00) (GLOSSARY.md): the
+    days after `from` up to and including `to`.
 
-    Computed on demand from the sim views at both clocks; nothing is stored.
+    `from` may be the day before the data, so a window can take in its first day. Computed
+    on demand from the sim views at both clocks; nothing is stored.
     """
-    clock_param(from_)
+    if from_ != FIRST_DAY - timedelta(1):
+        clock_param(from_)
     clock_param(to)
     if to <= from_:
         raise HTTPException(422, "to must be after from")
     counts = []
-    for clock in (from_, to):
-        with db.at_clock(clock) as conn:
-            counts.append(conn.cursor(row_factory=dict_row).execute(DELTA_COUNTS).fetchone() or {})
+    with db.pool().connection() as conn:
+        # One snapshot for both clocks, so a reload in between can't skew the difference.
+        conn.execute("set transaction isolation level repeatable read")
+        cur = conn.cursor(row_factory=dict_row)
+        for clock in (from_, to):
+            db.set_clock(conn, clock)
+            counts.append(cur.execute(DELTA_COUNTS).fetchone() or {})
     before, after = counts
     return {"from": from_, "to": to, "counts": {k: after[k] - before[k] for k in after}}
 
