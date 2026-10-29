@@ -11,10 +11,78 @@ mock_provider "azurerm" {
       location = "eastus"
     }
   }
+
+  # Postgres validates tenant_id as a UUID.
+  mock_data "azurerm_client_config" {
+    defaults = {
+      tenant_id = "00000000-0000-0000-0000-000000000000"
+    }
+  }
 }
 
 variables {
   budget_alert_email = "alerts@example.com"
+  operator_object_id = "00000000-0000-0000-0000-000000000001"
+}
+
+run "postgres_is_entra_only" {
+  command = plan
+
+  # ADR-0010: the endpoint is public, so there must be no password to guess or leak.
+  assert {
+    condition     = azurerm_postgresql_flexible_server.this.authentication[0].password_auth_enabled == false
+    error_message = "Password auth must stay off on Postgres: Entra tokens only (ADR-0010)."
+  }
+
+  assert {
+    condition     = azurerm_postgresql_flexible_server.this.authentication[0].active_directory_auth_enabled
+    error_message = "Entra auth must be on, or nothing can sign in to Postgres."
+  }
+}
+
+run "postgres_is_the_smallest_tier" {
+  command = plan
+
+  # ADR-0002: about $13/month. A bigger SKU or an HA standby multiplies the bill.
+  assert {
+    condition     = azurerm_postgresql_flexible_server.this.sku_name == "B_Standard_B1ms"
+    error_message = "Postgres stays on B1ms burstable (ADR-0002)."
+  }
+
+  assert {
+    condition     = length(azurerm_postgresql_flexible_server.this.high_availability) == 0
+    error_message = "No HA standby: it doubles the Postgres bill."
+  }
+}
+
+run "data_storage_is_entra_only" {
+  command = plan
+
+  assert {
+    condition     = azurerm_storage_account.data.shared_access_key_enabled == false
+    error_message = "The data storage account must stay Entra-only (no account keys)."
+  }
+}
+
+run "loader_job_is_manually_triggered" {
+  command = plan
+
+  # CD starts it after each deploy and waits for it. A schedule would load behind CD's back.
+  assert {
+    condition     = length(azurerm_container_app_job.loader.manual_trigger_config) == 1
+    error_message = "The loader job must be manually triggered: CD starts it and checks the result."
+  }
+}
+
+run "app_connects_with_its_identity" {
+  command = plan
+
+  # ADR-0010: the app signs in to Postgres with a token for this identity, so it needs
+  # the database's address and the identity's client ID.
+  assert {
+    condition     = alltrue([for n in ["DATABASE_URL", "AZURE_CLIENT_ID"] : contains([for e in azurerm_container_app.app.template[0].container[0].env : e.name], n)])
+    error_message = "The app container needs DATABASE_URL and AZURE_CLIENT_ID to reach Postgres."
+  }
 }
 
 run "environment_is_workload_profiles" {
