@@ -84,7 +84,7 @@ terraform -chdir=infra plan -var budget_alert_email=you@example.com
 
 - **Two Terraform roots.** Bootstrap creates what the pipeline needs before it can run: the state backend, plus the identity it logs in as. Nothing in `infra/` can do that for itself.
 - **OIDC, no secrets.** GitHub mints a short-lived token per job, and Azure trusts it only for a matching subject. There are two identities:
-  - `deploy` is trusted only on `refs/heads/main`. It has Contributor on the app RG, plus RBAC Administrator restricted by an ABAC condition so that it can only grant `AcrPull`.
+  - `deploy` is trusted only on `refs/heads/main`. It has Contributor on the app RG, plus RBAC Administrator restricted by an ABAC condition so that it can only grant `AcrPull`, `Storage Blob Data Reader` and `Storage Blob Data Contributor`.
   - `plan` is trusted only for `pull_request`. It is read-only.
 
   Fork PRs get no token at all.

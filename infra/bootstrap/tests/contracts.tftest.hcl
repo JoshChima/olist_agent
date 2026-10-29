@@ -34,14 +34,18 @@ run "old_style_prefix_is_rejected" {
   expect_failures = [var.github_sub_prefix]
 }
 
-run "deploy_can_only_grant_acrpull" {
+run "deploy_can_only_grant_listed_roles" {
   command = plan
 
   # The ABAC condition lists the allowed role IDs (for write and for delete). If every
-  # GUID in it is AcrPull, deploy can't hand out any other role.
+  # GUID in it is one of these, deploy can't hand out any other role.
   assert {
-    condition     = toset(regexall("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", azurerm_role_assignment.deploy_rbac_admin.condition)) == toset(["7f951dda-4ed3-4680-a7ca-43fe172d538d"])
-    error_message = "deploy's RBAC Administrator condition must allow AcrPull and nothing else."
+    condition = toset(regexall("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", azurerm_role_assignment.deploy_rbac_admin.condition)) == toset([
+      "7f951dda-4ed3-4680-a7ca-43fe172d538d", # AcrPull
+      "2a2b9908-6ea1-4ae2-8e65-a410df84e7d1", # Storage Blob Data Reader
+      "ba92f5b4-2d11-453d-a403-e96b0029c9fe", # Storage Blob Data Contributor
+    ])
+    error_message = "deploy's RBAC Administrator condition must allow AcrPull, Storage Blob Data Reader and Storage Blob Data Contributor, and nothing else."
   }
 }
 
