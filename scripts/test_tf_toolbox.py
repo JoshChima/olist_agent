@@ -27,9 +27,8 @@ FAKES = {
     "docker": """case "$1" in
 inspect) echo true ;;
 exec)
-  while [ "$1" != olist-tf ]; do shift; done
-  shift
-  exec "$@" ;;
+  while [ $# -gt 0 ]; do case "$1" in olist-tf-*) shift; exec "$@" ;; esac; shift; done
+  exit 1 ;;
 *) exit 1 ;;
 esac""",
     "gh": "echo fake",
