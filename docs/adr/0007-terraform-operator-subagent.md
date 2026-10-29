@@ -35,6 +35,7 @@ It has no skills or agents. Its container can't see the repo, and it never runs 
   - The script applies only `bootstrap`, only the exact plan file whose sha256 was approved, and never a BLOCK plan.
   - `.claude/settings.json` has an `ask` rule on `scripts/tf-toolbox.sh apply`, plus a project `PreToolUse` hook (`scripts/ask_tf_apply.py`) that returns `permissionDecision: "ask"` for any `tf-toolbox.sh apply`. A person approves every apply command line.
   - A frontmatter `PreToolUse` hook (`scripts/guard_tf_bash.py`) limits the subagent's Bash to that one script.
+  - For a plain-language account of why the hash exists, see [Why apply needs the plan's sha256](../../README.md#why-apply-needs-the-plans-sha256).
 - **Sign-in happens once per task.** It's a device-code `az login` in the container; `down` logs out and removes the container.
 - **Only the plugin's read-only registry tools are used**, for checking azurerm `~> 5.10` arguments.
 
