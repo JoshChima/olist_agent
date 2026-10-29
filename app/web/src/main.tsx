@@ -1,9 +1,16 @@
 import { StrictMode, useEffect, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { FIRST_DAY, LAST_DAY, useClock } from "./clock";
+import { FIRST_DAY, LAST_DAY, step, useClock, type Step } from "./clock";
+import { DeltaStrip } from "./Delta";
 import { Explore } from "./Explore";
 import { Orders } from "./Orders";
 import { Funnel } from "./Funnel";
+
+const STEPS: [Step, string][] = [
+  ["month", "M"],
+  ["week", "W"],
+  ["day", "D"],
+];
 
 function App() {
   const [clock, setClock] = useClock();
@@ -40,8 +47,31 @@ function App() {
             onChange={(e) => setClock(e.target.value)}
           />
         </label>
+        <span style={{ display: "flex", gap: "0.25rem" }}>
+          {STEPS.map(([unit, short]) => (
+            <button
+              key={unit}
+              title={`Back one ${unit}`}
+              disabled={clock <= FIRST_DAY}
+              onClick={() => setClock(step(clock, unit, -1))}
+            >
+              −1{short}
+            </button>
+          ))}
+          {[...STEPS].reverse().map(([unit, short]) => (
+            <button
+              key={unit}
+              title={`Forward one ${unit}`}
+              disabled={clock >= LAST_DAY}
+              onClick={() => setClock(step(clock, unit, 1))}
+            >
+              +1{short}
+            </button>
+          ))}
+        </span>
       </nav>
       {!loaded && <p role="status">No data loaded yet.</p>}
+      <DeltaStrip clock={clock} />
       {page}
     </main>
   );

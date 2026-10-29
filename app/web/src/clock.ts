@@ -35,3 +35,20 @@ export function useClock(): [string, (day: string) => void] {
   }, [clock]);
   return [clock, (day) => isDay(day) && setClock(clamp(day))];
 }
+
+export type Step = "day" | "week" | "month";
+
+/** The day n steps from day. A month step keeps the day of month where it can (Jan 31 + 1 month = Feb 28). */
+export function step(day: string, unit: Step, n: number): string {
+  const d = new Date(`${day}T00:00:00Z`);
+  if (unit === "month") {
+    const dom = d.getUTCDate();
+    d.setUTCDate(1);
+    d.setUTCMonth(d.getUTCMonth() + n);
+    const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+    d.setUTCDate(Math.min(dom, last));
+  } else {
+    d.setUTCDate(d.getUTCDate() + n * (unit === "week" ? 7 : 1));
+  }
+  return d.toISOString().slice(0, 10);
+}
