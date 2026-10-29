@@ -12,3 +12,5 @@ dist/
 # Terraform override files, e.g. infra/bootstrap/local_override.tf for bootstrap's first apply.
 *_override.tf
 *_override.tf.json
+# The Olist source data is never committed (data/LICENSE).
+*.sqlite
