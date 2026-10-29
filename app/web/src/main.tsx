@@ -2,6 +2,7 @@ import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { FIRST_DAY, LAST_DAY, useClock } from "./clock";
 import { Explore } from "./Explore";
+import { Funnel } from "./Funnel";
 
 function App() {
   const [clock, setClock] = useClock();
@@ -14,13 +15,19 @@ function App() {
   }, []);
 
   // A pathname switch is all the routing needed (no router library).
-  const page = location.pathname === "/explore" ? <Explore clock={clock} /> : null;
+  const page =
+    location.pathname === "/explore" ? (
+      <Explore clock={clock} />
+    ) : location.pathname === "/funnel" ? (
+      <Funnel clock={clock} />
+    ) : null;
 
   return (
     <main style={{ fontFamily: "system-ui", maxWidth: 1100, margin: "2rem auto", padding: "0 1rem" }}>
       <h1>olist_agent</h1>
       <nav style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
         <a href={`/explore?clock=${clock}`}>Explorer</a>
+        <a href={`/funnel?clock=${clock}`}>Funnel</a>
         <label>
           Clock{" "}
           <input
