@@ -122,7 +122,7 @@ select
     (select count(*) from sim.orders where order_purchase_timestamp >= %(d30)s) as orders,
     (select count(distinct c.customer_unique_id)
         from sim.orders o join sim.customers c using (customer_id)
-        where o.order_purchase_timestamp >= %(d30)s) as customers,
+        where o.order_purchase_timestamp >= %(d30)s) as people,
     (select coalesce(sum(p.payment_value), 0)::float8
         from sim.order_payments p join sim.orders o using (order_id)
         where o.order_purchase_timestamp >= %(d30)s) as gmv,
@@ -152,7 +152,7 @@ group by 1 order by 2 desc, 1 nulls last limit 10
 """
 ORDERS_BY_STATE = """
 select c.customer_state as state, count(*) as orders,
-    count(distinct c.customer_unique_id) as customers
+    count(distinct c.customer_unique_id) as people
 from sim.orders o join sim.customers c using (customer_id)
 group by 1 order by 2 desc, 1
 """

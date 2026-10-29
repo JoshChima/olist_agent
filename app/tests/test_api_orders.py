@@ -119,7 +119,7 @@ def dashboard(client: TestClient, clock: str = CLOCK) -> dict[str, Any]:
 def test_kpis_cover_the_30_days_ending_at_the_clock(client: TestClient) -> None:
     kpis = dashboard(client)["kpis"]
     # o1, o2, o3, o8 were bought in the 30 days; o1 and o2 are one person.
-    assert (kpis["orders"], kpis["customers"]) == (4, 3)
+    assert (kpis["orders"], kpis["people"]) == (4, 3)
     assert kpis["gmv"] == pytest.approx(100 + 50 + 25 + 40 + 10)
 
 
@@ -167,9 +167,9 @@ def test_top_10_categories_by_orders_in_english(client: TestClient) -> None:
 
 def test_orders_and_people_by_customer_state(client: TestClient) -> None:
     assert dashboard(client)["by_state"] == [
-        {"state": "RJ", "orders": 3, "customers": 2},
-        {"state": "SP", "orders": 3, "customers": 2},
-        {"state": "MG", "orders": 1, "customers": 1},
+        {"state": "RJ", "orders": 3, "people": 2},
+        {"state": "SP", "orders": 3, "people": 2},
+        {"state": "MG", "orders": 1, "people": 1},
     ]
 
 
@@ -177,7 +177,7 @@ def test_before_any_order_there_is_nothing_to_average(client: TestClient) -> Non
     d = dashboard(client, "2016-09-04")
     assert d["kpis"] == {
         "orders": 0,
-        "customers": 0,
+        "people": 0,
         "gmv": 0,
         "avg_review_score": None,
         "late_pct": None,

@@ -1,11 +1,12 @@
-import { useEffect, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { dataQualityAreas } from "./dataQuality";
+import { useJson } from "./useJson";
 
 type Dashboard = {
   kpis: {
     orders: number;
-    customers: number;
+    people: number;
     gmv: number;
     avg_review_score: number | null;
     late_pct: number | null;
@@ -13,7 +14,7 @@ type Dashboard = {
   daily_orders: { day: string; orders: number }[];
   by_status: { status: string; orders: number }[];
   top_categories: { category: string | null; orders: number }[];
-  by_state: { state: string | null; orders: number; customers: number }[];
+  by_state: { state: string | null; orders: number; people: number }[];
 };
 
 const BAR = "#3b6fd4";
@@ -41,26 +42,7 @@ function Panel({ title, height, children }: { title: string; height: number; chi
 
 /** The business as it looked on the clock's day: 30-day KPIs and the orders behind them. */
 export function Orders({ clock }: { clock: string }) {
-  const [data, setData] = useState<Dashboard | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let current = true;
-    fetch(`/api/orders?clock=${clock}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${r.status} ${r.statusText}`))))
-      .then((d: Dashboard) => {
-        if (current) {
-          setData(d);
-          setError(null);
-        }
-      })
-      .catch((e: Error) => {
-        if (current) setError(e.message);
-      });
-    return () => {
-      current = false;
-    };
-  }, [clock]);
+  const { data, error } = useJson<Dashboard>(`/api/orders?clock=${clock}`);
 
   if (error) return <p role="alert">Couldn't load the order dashboard: {error}</p>;
   if (!data) return <p>Loading…</p>;
@@ -72,7 +54,7 @@ export function Orders({ clock }: { clock: string }) {
       <h3 style={{ margin: "0 0 0.5rem" }}>Last 30 days</h3>
       <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
         <Kpi label="Orders" value={kpis.orders.toLocaleString()} />
-        <Kpi label="Customers (people)" value={kpis.customers.toLocaleString()} />
+        <Kpi label="Customers (people)" value={kpis.people.toLocaleString()} />
         <Kpi
           label="GMV"
           value={kpis.gmv.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
@@ -118,7 +100,7 @@ export function Orders({ clock }: { clock: string }) {
           <Tooltip />
           <Bar dataKey="orders" name="Orders" fill={BAR} radius={[2, 2, 0, 0]} />
           <Legend />
-          <Bar dataKey="customers" name="People" fill="#9bb5e8" radius={[2, 2, 0, 0]} />
+          <Bar dataKey="people" name="People" fill="#9bb5e8" radius={[2, 2, 0, 0]} />
         </BarChart>
       </Panel>
     </section>
