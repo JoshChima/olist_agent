@@ -53,16 +53,17 @@ def test_range_ends_are_valid_clocks(client: TestClient) -> None:
 
 def test_view_list_is_the_sim_views(client: TestClient) -> None:
     views = client.get("/api/explore").json()["views"]
-    for v in [
+    assert {
         "orders",
+        "order_items",
+        "order_payments",
         "order_reviews",
         "customers",
         "sellers",
         "products",
         "geolocation",
         "product_category_name_translation",
-    ]:
-        assert v in views
+    } <= set(views)
 
 
 def test_duplicate_review_ids_page_without_overlap(client: TestClient) -> None:

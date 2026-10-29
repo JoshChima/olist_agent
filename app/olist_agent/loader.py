@@ -31,6 +31,24 @@ TABLES = [
     "leads_closed",
 ]
 
+# Repaired timestamps: each stage no earlier than the stages before it. greatest() skips
+# NULLs, so a missing stage is skipped over and a missing timestamp stays missing.
+REPAIR_ORDERS = """
+truncate raw.order_lifecycle;
+insert into raw.order_lifecycle
+select order_id, a.ts, c.ts, d.ts,
+    (a.ts, c.ts, d.ts) is distinct from
+    (order_approved_at, order_delivered_carrier_date, order_delivered_customer_date)
+from raw.orders,
+    lateral (select case when order_approved_at is not null
+        then greatest(order_approved_at, order_purchase_timestamp) end) a(ts),
+    lateral (select case when order_delivered_carrier_date is not null
+        then greatest(order_delivered_carrier_date, a.ts, order_purchase_timestamp) end) c(ts),
+    lateral (select case when order_delivered_customer_date is not null
+        then greatest(order_delivered_customer_date, c.ts, a.ts, order_purchase_timestamp) end
+    ) d(ts)
+"""
+
 
 def sha256(path: Path) -> str:
     with path.open("rb") as f:
@@ -82,6 +100,7 @@ def load(
             swap = sql.SQL("truncate raw.{t}; insert into raw.{t} select * from staging.{t}")
             for t in TABLES:
                 conn.execute(swap.format(t=sql.Identifier(t)))
+            conn.execute(REPAIR_ORDERS)
             conn.execute("refresh materialized view raw.seller_first_activity")
             conn.execute("drop schema staging cascade")
             conn.execute(
