@@ -13,6 +13,7 @@ Linear is the only task list here. Don't create `TASKS.md` or a `memory/` folder
 - **Comment on an issue**: `save_comment` on the issue.
 - **Apply / remove labels**: `save_issue` with `id` and `addLabels` / `removeLabels`.
 - **Close**: first check **every acceptance criterion** against the delivered work: run the test, hit the endpoint, read the config. Tick the met ones in the description. Move any unmet one to a follow-up issue linked with `relatedTo`, and say so in the closing comment. Then comment, and `save_issue` with `state: "Done"` (completed) or `state: "Canceled"` (won't do). Duplicates: `duplicateOf: "AIE-<n>"`.
+- **A decision made after a spec is written** (a region move, a narrowed term): comment it on the spec. Patch the spec's description only when the change alters what gets built. `save_issue` echoes the whole description back, so every patch to a long spec costs its full length.
 
 Statuses in AIE: Backlog, Todo, In Progress, Done, Canceled, Duplicate.
 
@@ -40,6 +41,17 @@ The Linear GitHub integration is installed on `JoshChima/olist_agent`. It links 
 ## When a skill says "publish to the issue tracker"
 
 Create a Linear issue in team AIE, project olist_agent.
+
+## When `/retro` presents its findings
+
+File each finding the user keeps as its own issue, so one that isn't urgent now can be picked up later. Skip findings the session already fixed.
+
+- **Labels**: `Improvement` + `ready-for-agent` + `retro`. A finding improves the agent's environment (a check, a doc, a tool), so it's an Improvement. When something was actually broken, the session fixes it; the finding is the check that would have caught it. These are written by us, so they skip `needs-triage`.
+- **Priority** is the retro's severity: High, Medium or Low. Raise it when the finding starts to matter.
+- **Status** Backlog, with `relatedTo` the work that surfaced it.
+- **Description**: a `Source:` line (`/retro` on <work>, date), then Problem (with the evidence), What to build, and Acceptance criteria.
+
+Find them later by the `retro` label, sorted by priority.
 
 ## When a skill says "fetch the relevant ticket"
 
