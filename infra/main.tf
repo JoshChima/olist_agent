@@ -293,6 +293,13 @@ resource "azurerm_postgresql_flexible_server" "this" {
     password_auth_enabled         = false
     tenant_id                     = data.azurerm_client_config.current.tenant_id
   }
+
+  # Azure picks an availability zone at create time. Without this, every apply after the
+  # first tries to set zone back to null, and Azure rejects it ("zone can only be changed
+  # when exchanged with ... standby_availability_zone").
+  lifecycle {
+    ignore_changes = [zone]
+  }
 }
 
 # The server takes one operation at a time and rejects the rest ("another operation is
