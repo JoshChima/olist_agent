@@ -78,11 +78,11 @@ function Rows({ view, clock }: { view: string; clock: string }) {
         </table>
       </div>
       <p>
-        <button disabled={page <= 1} onClick={() => setPage(page - 1)}>
+        <button className="btn btn-sm preset-tonal" disabled={page <= 1} onClick={() => setPage(page - 1)}>
           Previous
         </button>{" "}
         Page {page} of {pages}{" "}
-        <button disabled={page >= pages} onClick={() => setPage(page + 1)}>
+        <button className="btn btn-sm preset-tonal" disabled={page >= pages} onClick={() => setPage(page + 1)}>
           Next
         </button>
       </p>

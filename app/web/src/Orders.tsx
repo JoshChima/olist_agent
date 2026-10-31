@@ -32,7 +32,7 @@ function Kpi({ label, value }: { label: string; value: string }) {
 function Panel({ title, height, children }: { title: string; height: number; children: ReactNode }) {
   return (
     <section style={{ marginTop: "1.5rem" }}>
-      <h3 style={{ margin: "0 0 0.5rem" }}>{title}</h3>
+      <h3 className="h3" style={{ margin: "0 0 0.5rem" }}>{title}</h3>
       <ResponsiveContainer width="100%" height={height}>
         {children}
       </ResponsiveContainer>
@@ -50,8 +50,8 @@ export function Orders({ clock }: { clock: string }) {
 
   return (
     <section>
-      <h2>Orders as of {clock}</h2>
-      <h3 style={{ margin: "0 0 0.5rem" }}>Last 30 days</h3>
+      <h2 className="h2">Orders as of {clock}</h2>
+      <h3 className="h3" style={{ margin: "0 0 0.5rem" }}>Last 30 days</h3>
       <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
         <Kpi label="Orders" value={kpis.orders.toLocaleString()} />
         <Kpi label="Customers (people)" value={kpis.people.toLocaleString()} />
