@@ -87,6 +87,25 @@ jobs:
           python3 scripts/tf_risk.py plan.json > risk.md || rc=$?
           cat risk.md
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
+      # Plan can't see region capacity: a restricted region or zero quota only failed at
+      # apply, on main (ADR-0002). Ask Azure before merge, as the same read-only identity.
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        if: steps.plan.outcome == 'success'
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID_PLAN }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: capacity
+        id: capacity
+        if: steps.plan.outcome == 'success'
+        continue-on-error: true
+        run: |
+          rc=0
+          python3 scripts/check_capacity.py plan.json > raw.txt 2>&1 || rc=$?
+          python3 scripts/redact.py < raw.txt > capacity.txt || rc=1
+          rm raw.txt
+          cat capacity.txt
+          exit "$rc"
       - name: comment
         env:
           GH_TOKEN: ${{ github.token }}
@@ -101,6 +120,14 @@ jobs:
               echo "> Blocked: this plan deletes or replaces a protected resource. Change the code instead."
             fi
             [ -f risk.md ] && cat risk.md && echo
+            if [ "${{ steps.capacity.outcome }}" = failure ]; then
+              echo "> [!CAUTION]"
+              echo "> A planned Postgres server can't be created in its region, so CD's apply would fail:"
+              echo
+              echo '```'
+              cat capacity.txt
+              echo '```'
+            fi
             echo "<details><summary>Show plan</summary>"
             echo
             echo '```'
@@ -110,5 +137,5 @@ jobs:
           } > comment.md
           # Edit the bot's last comment instead of stacking one per push.
           gh pr comment ${{ github.event.pull_request.number }} --body-file comment.md --edit-last --create-if-none
-      - if: steps.plan.outcome == 'failure' || steps.risk.outputs.rc == '3'
+      - if: steps.plan.outcome == 'failure' || steps.risk.outputs.rc == '3' || steps.capacity.outcome == 'failure'
         run: exit 1
