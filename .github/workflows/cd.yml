@@ -42,6 +42,17 @@ jobs:
           python3 scripts/redact.py < apply.txt || rc=1
           rm apply.txt
           exit "$rc"
+      # The config must converge: a plan right after apply has to be empty (exit 0). Exit 2 is
+      # drift Azure introduced at create, like the Postgres zone (#20), caught in this deploy
+      # instead of failing the next one's apply.
+      - name: plan after apply is empty
+        run: |
+          rc=0
+          terraform -chdir=infra plan -detailed-exitcode -input=false -no-color > plan.txt 2>&1 || rc=$?
+          python3 scripts/redact.py < plan.txt || rc=1
+          rm plan.txt
+          if [ "$rc" = 2 ]; then echo "::error::plan after apply is not empty: the config doesn't converge"; fi
+          exit "$rc"
       - name: read outputs
         id: tf
         run: |
