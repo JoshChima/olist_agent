@@ -43,10 +43,7 @@ export function DeltaStrip({ clock }: { clock: string }) {
             .map(([k, label]) => `${data!.counts[k].toLocaleString()} ${label}`)
             .join(", ")}`;
   return (
-    <p
-      role="status"
-      style={{ background: "#f3f6fc", border: "1px solid #d5def0", borderRadius: 6, padding: "0.5rem 0.75rem" }}
-    >
+    <p role="status" className="preset-tonal-tertiary" style={{ borderRadius: 6, padding: "0.5rem 0.75rem" }}>
       {text}
     </p>
   );
