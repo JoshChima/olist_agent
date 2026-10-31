@@ -56,7 +56,7 @@ iac() {
   python3 scripts/test_tf_risk.py
   python3 scripts/test_guards.py
   python3 scripts/test_tf_toolbox.py
-  # CI's region capacity check (ADR-0002): a planned Postgres server must fit its region.
+  # CI's region check (ADR-0002): a planned Postgres server's region must offer it.
   python3 scripts/test_check_capacity.py
   dk run --rm -v "$HOST:/mnt" -w /mnt koalaman/shellcheck:v0.10.0 scripts/*.sh
   # vars.* are never masked, so anything read from them lands in the public logs.

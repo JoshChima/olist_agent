@@ -16,9 +16,10 @@ The dataset ships as SQLite, but SQLite on an Azure file share corrupts under co
 Use Azure Database for PostgreSQL Flexible Server, smallest burstable tier, in South Central US, with the `vector` extension enabled.
 - Amended 2026-10-29: the first P1 deploys could not create the server in East US or East US 2.
   - East US: provisioning is restricted for this subscription (`list-skus` says so).
-  - East US 2: `list-skus` shows no restriction, but the subscription has zero Flexible Server quota there, so the create failed with `SkuNotAvailable`.
+  - East US 2: the create failed with `SkuNotAvailable`.
 
-  South Central US has Burstable quota, and this subscription already runs a B1ms server there. Before choosing a region, check both `list-skus` and the regional quota (for example, the Azure MCP `quota_usage_check`). The rest of the app stays in East US.
+  South Central US works, and this subscription already runs a B1ms server there. The rest of the app stays in East US.
+- Amended 2026-10-31: CI's plan job now fails a PR that creates a server in a restricted region, or where the SKU or version isn't offered (`scripts/check_capacity.py`, which reads `list-skus`). Nothing could have predicted East US 2. Its quota (40 Burstable cores), capabilities and `list-skus` all matched South Central US, in every API version tried. Only the Azure MCP `quota_usage_check` reported "No SKU available" there, and its source couldn't be traced. Treat the first create in a new region as unproven until CD succeeds.
 - The SQLite file is only a load source. It is uploaded once to Blob storage and imported by an idempotent Container Apps Job.
 - Local development runs the same Postgres in docker-compose.
 
