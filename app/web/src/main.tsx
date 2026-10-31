@@ -5,6 +5,7 @@ import { DeltaStrip } from "./Delta";
 import { Explore } from "./Explore";
 import { Orders } from "./Orders";
 import { Funnel } from "./Funnel";
+import "./app.css";
 
 const STEPS: [Step, string][] = [
   ["month", "M"],
@@ -33,12 +34,12 @@ function App() {
   const page = routes[location.pathname] ?? null;
 
   return (
-    <main style={{ fontFamily: "system-ui", maxWidth: 1100, margin: "2rem auto", padding: "0 1rem" }}>
-      <h1>olist_agent</h1>
+    <main style={{ maxWidth: 1100, margin: "2rem auto", padding: "0 1rem" }}>
+      <h1 className="h1">olist_agent</h1>
       <nav style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-        <a href={`/explore?clock=${clock}`}>Explorer</a>
-        <a href={`/orders?clock=${clock}`}>Orders</a>
-        <a href={`/funnel?clock=${clock}`}>Funnel</a>
+        <a className="anchor" href={`/explore?clock=${clock}`}>Explorer</a>
+        <a className="anchor" href={`/orders?clock=${clock}`}>Orders</a>
+        <a className="anchor" href={`/funnel?clock=${clock}`}>Funnel</a>
         <label>
           Clock{" "}
           <input
@@ -52,6 +53,7 @@ function App() {
         <span style={{ display: "flex", gap: "0.25rem" }}>
           {STEPS.map(([unit, short]) => (
             <button
+              className="btn btn-sm preset-tonal"
               key={unit}
               title={`Back one ${unit}`}
               disabled={clock <= FIRST_DAY}
@@ -62,6 +64,7 @@ function App() {
           ))}
           {[...STEPS].reverse().map(([unit, short]) => (
             <button
+              className="btn btn-sm preset-tonal"
               key={unit}
               title={`Forward one ${unit}`}
               disabled={clock >= LAST_DAY}

@@ -47,7 +47,7 @@ export function Funnel({ clock }: { clock: string }) {
 
   return (
     <section>
-      <h2>Funnel as of {clock}</h2>
+      <h2 className="h2">Funnel as of {clock}</h2>
       <ol style={{ display: "flex", flexWrap: "wrap", gap: "1rem", listStyle: "none", padding: 0, alignItems: "center" }}>
         {data.stages.map((s) => (
           <li key={s.stage} style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
@@ -61,7 +61,7 @@ export function Funnel({ clock }: { clock: string }) {
           </li>
         ))}
       </ol>
-      <h3>MQLs a month, by origin</h3>
+      <h3 className="h3">MQLs a month, by origin</h3>
       <ResponsiveContainer width="100%" height={320}>
         <BarChart data={rows}>
           <CartesianGrid vertical={false} stroke="#eee" />

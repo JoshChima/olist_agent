@@ -1,0 +1,13 @@
+/* The one global stylesheet and the source of truth for styling (ADR-0011). */
+@import 'tailwindcss';
+@import '@skeletonlabs/skeleton';
+@import '@skeletonlabs/skeleton-react';
+@import '@skeletonlabs/skeleton/themes/concord';
+
+/*
+ * Theme overrides. The only place a theme value may ever change, and only after
+ * Concord has been seen on real pages. Changing it means regenerating the Design
+ * System artifact linked on AIE-47. Empty: Concord is used verbatim.
+ */
+[data-theme='concord'] {
+}
