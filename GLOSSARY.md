@@ -45,3 +45,19 @@
 **Drift** — Azure and Terraform state disagree: something changed outside Terraform, or an apply only partly landed. Found with `plan -refresh-only`.
 
 **Live run** — An agent execution that calls models and spends money. Only allowlisted signed-in users trigger live runs; everyone else reads cached findings.
+
+## Surfaces
+
+The parts of the web app that tickets and design prompts refer to by name.
+
+**Shell** — Everything on screen that is not the current page: the title, the navigation and the clock controls.
+
+**Clock controls** — The part of the shell that performs time-warps: a date input and six step buttons (±1 day, week, month). Avoid: "date picker", "time controls".
+
+**Delta strip** — The one-line summary of the delta event produced by the latest forward time-warp, shown under the shell on every page. Shows "rewound" after a rewind.
+
+**Orders dashboard** — The page of order figures as of the clock: 30-day stats, order and revenue charts, status breakdown. The default page.
+
+**Funnel dashboard** — The page showing lead counts by funnel stage as of the clock.
+
+**Explorer** — The page that lists any Olist table as of the clock, sortable by column. Avoid: "table viewer", "data browser".
