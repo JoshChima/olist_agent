@@ -61,6 +61,17 @@ run "plan_identity_is_read_only" {
     condition     = azurerm_role_assignment.plan_state.role_definition_name == "Storage Blob Data Reader"
     error_message = "The PR identity must only read state."
   }
+
+  # Its one subscription-wide role reads Postgres region capacity for the CI capacity check.
+  assert {
+    condition     = azurerm_role_definition.plan_postgres_locations.permissions[0].actions == tolist(["Microsoft.DBforPostgreSQL/locations/*/read"])
+    error_message = "The PR identity's subscription role must only read Postgres location metadata."
+  }
+
+  assert {
+    condition     = length(coalesce(azurerm_role_definition.plan_postgres_locations.permissions[0].data_actions, [])) == 0
+    error_message = "The PR identity's subscription role must grant no data actions."
+  }
 }
 
 run "state_storage_is_locked_down" {

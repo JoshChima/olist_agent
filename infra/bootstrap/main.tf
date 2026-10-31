@@ -259,6 +259,25 @@ resource "azurerm_role_assignment" "plan_list_secrets" {
   principal_id       = azurerm_user_assigned_identity.ci["plan"].principal_id
 }
 
+# CI's capacity check (scripts/check_capacity.py) reads a region's Postgres capabilities and
+# quota before a server is created there. Those are subscription-level endpoints that Reader
+# on the resource group doesn't reach, so this role reads Postgres location metadata and
+# nothing else.
+resource "azurerm_role_definition" "plan_postgres_locations" {
+  name  = "olist-agent terraform plan: read Postgres region capacity"
+  scope = "/subscriptions/${data.azurerm_client_config.current.subscription_id}"
+  permissions {
+    actions = ["Microsoft.DBforPostgreSQL/locations/*/read"]
+  }
+  assignable_scopes = ["/subscriptions/${data.azurerm_client_config.current.subscription_id}"]
+}
+
+resource "azurerm_role_assignment" "plan_postgres_locations" {
+  scope              = "/subscriptions/${data.azurerm_client_config.current.subscription_id}"
+  role_definition_id = azurerm_role_definition.plan_postgres_locations.role_definition_resource_id
+  principal_id       = azurerm_user_assigned_identity.ci["plan"].principal_id
+}
+
 # Read-only on state. CI runs plan with -lock=false, because taking the lock (a blob lease) is a write.
 resource "azurerm_role_assignment" "plan_state" {
   scope                = azurerm_storage_container.tfstate.id
