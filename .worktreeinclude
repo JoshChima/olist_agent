@@ -1,3 +1,5 @@
 # Gitignored files Claude Code copies from the main checkout into each new worktree.
 # The Olist source data: download it into the main checkout's data/ once.
 data/olist.sqlite
+# Local secrets (.env.example lists them).
+.env
