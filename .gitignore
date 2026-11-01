@@ -6,7 +6,6 @@ node_modules/
 dist/
 # Playwright's run output; the committed baselines are app/web/e2e/baselines/.
 app/web/test-results/
-app/web/playwright-report/
 .terraform/
 *.tfstate
 *.tfstate.*

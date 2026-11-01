@@ -47,7 +47,7 @@ web() {
     # Playwright over the build above: six screenshots against e2e/baselines (compared on
     # linux only, see docs/agents/web-tests.md) and the forward-step interaction.
     corepack pnpm exec playwright install chromium
-    corepack pnpm exec playwright test
+    corepack pnpm e2e
   )
 }
 

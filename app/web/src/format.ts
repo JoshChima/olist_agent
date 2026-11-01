@@ -1,4 +1,4 @@
-// Number formatting for every count and amount the app shows (AIE-47 story 17).
+// Number formatting for the counts and amounts the app shows (AIE-47 story 17).
 
 /** A count: the visitor's locale separators, no decimals. */
 export const count = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 0 });

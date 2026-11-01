@@ -29,7 +29,7 @@ test("the step buttons are disabled at the dataset's first and last day", () => 
   expect(disabled(forward)).toEqual([true, true, true]);
 });
 
-test("the delta strip says rewound after a backward clock change", () => {
+test("the delta strip says rewound after a rewind", () => {
   const { rerender } = render(<DeltaStrip clock="2018-02-17" />);
   rerender(<DeltaStrip clock="2018-02-10" />);
   expect(screen.getByRole("status").textContent).toBe("rewound");

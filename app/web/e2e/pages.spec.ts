@@ -36,11 +36,25 @@ for (const path of PAGES) {
   }
 }
 
+// The delta strip's wording for each count the API returns, in display order (GLOSSARY.md "Delta event").
+const DELTA_LABELS: Record<string, string> = {
+  new_orders: "new orders",
+  approved: "approved",
+  shipped: "shipped",
+  delivered: "delivered",
+  canceled_or_unavailable: "canceled or unavailable",
+  new_reviews: "new reviews",
+  new_mqls: "new MQLs",
+  deals_closed: "deals closed",
+  new_active_sellers: "new active sellers",
+};
+
 test("a forward step shows the delta event from the fixture", async ({ page }) => {
   await open(page, "/orders");
   await page.getByRole("button", { name: "+1D" }).click();
-  const { counts } = JSON.parse(fixture("delta"));
-  await expect(page.getByRole("status")).toHaveText(
-    new RegExp(`^${CLOCK} → 2018-02-18: ${counts.new_orders} new orders, ${counts.approved} approved, `),
-  );
+  const delta = JSON.parse(fixture("delta"));
+  const summary = Object.entries(DELTA_LABELS)
+    .map(([key, label]) => `${delta.counts[key].toLocaleString("en-US")} ${label}`)
+    .join(", ");
+  await expect(page.getByRole("status")).toHaveText(`${delta.from} → ${delta.to}: ${summary}`);
 });
