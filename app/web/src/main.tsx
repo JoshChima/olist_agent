@@ -4,7 +4,7 @@ import { useClock } from "./clock";
 import { Explore } from "./Explore";
 import { Orders } from "./Orders";
 import { Funnel } from "./Funnel";
-import { Shell } from "./Shell";
+import { activePath, Shell } from "./Shell";
 import "./app.css";
 
 function App() {
@@ -17,19 +17,15 @@ function App() {
       .catch(() => setLoaded(false));
   }, []);
 
-  // A pathname switch is all the routing needed (no router library). / is the order dashboard.
-  const orders: [string, ReactNode] = ["Orders", <Orders clock={clock} />];
-  const routes: Record<string, [string, ReactNode]> = {
-    "/": orders,
-    "/explore": ["Explorer", <Explore clock={clock} />],
-    "/orders": orders,
-    "/funnel": ["Funnel", <Funnel clock={clock} />],
+  const pages: Record<string, ReactNode> = {
+    "/explore": <Explore clock={clock} />,
+    "/orders": <Orders clock={clock} />,
+    "/funnel": <Funnel clock={clock} />,
   };
-  const [title, page] = routes[location.pathname] ?? [];
 
   return (
-    <Shell clock={clock} onClock={setClock} loaded={loaded} title={title}>
-      {page}
+    <Shell clock={clock} onClock={setClock} loaded={loaded}>
+      {pages[activePath()]}
     </Shell>
   );
 }

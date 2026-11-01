@@ -4,12 +4,15 @@ import { ClockControls } from "./ClockControls";
 import { DeltaStrip } from "./Delta";
 import { CARD, FOCUS, LINE, MUTED, SMALL, STATUS } from "./tokens";
 
-// One tile per page, in rail order. Every href carries the clock (ADR-0009).
+// One tile per page, in rail order: title and pathname. Every href carries the clock (ADR-0009).
 const PAGES = [
   ["Explorer", "/explore"],
   ["Orders", "/orders"],
   ["Funnel", "/funnel"],
 ] as const;
+
+/** The page the pathname names; / is the Orders dashboard. A pathname switch is all the routing needed. */
+export const activePath = () => (location.pathname === "/" ? "/orders" : location.pathname);
 
 /**
  * Everything that is not the current page (GLOSSARY.md "Shell"): the app bar with the product name and
@@ -20,16 +23,15 @@ export function Shell({
   clock,
   onClock,
   loaded,
-  title,
   children,
 }: {
   clock: string;
   onClock: (day: string) => void;
   loaded: boolean;
-  title?: string;
   children: ReactNode;
 }) {
-  const here = location.pathname === "/" ? "/orders" : location.pathname;
+  const here = activePath();
+  const title = PAGES.find(([, path]) => path === here)?.[0];
   return (
     <div className="grid h-screen grid-cols-[72px_1fr] grid-rows-[56px_minmax(0,1fr)]">
       {/* Skeleton's base CSS makes the AppBar a padded column over surface-100-900 and the Toolbar a grid;

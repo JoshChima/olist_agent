@@ -9,7 +9,7 @@ const STEPS: [Step, string][] = [
 
 /** The date input bounded to the dataset, then the six step buttons: back (−1M −1W −1D), forward (+1D +1W +1M). */
 export function ClockControls({ clock, onChange }: { clock: string; onChange: (day: string) => void }) {
-  const button = (unit: Step, short: string, dir: -1 | 1) => (
+  const stepButton = (unit: Step, short: string, dir: -1 | 1) => (
     <button
       key={`${dir}${unit}`}
       className={`btn btn-sm preset-tonal font-semibold ${SMALL} ${FOCUS}`}
@@ -34,8 +34,8 @@ export function ClockControls({ clock, onChange }: { clock: string; onChange: (d
         value={clock}
         onChange={(e) => onChange(e.target.value)}
       />
-      <div className="flex gap-1">{STEPS.map(([unit, short]) => button(unit, short, -1))}</div>
-      <div className="ml-2 flex gap-1">{[...STEPS].reverse().map(([unit, short]) => button(unit, short, 1))}</div>
+      <div className="flex gap-1">{STEPS.map(([unit, short]) => stepButton(unit, short, -1))}</div>
+      <div className="ml-2 flex gap-1">{[...STEPS].reverse().map(([unit, short]) => stepButton(unit, short, 1))}</div>
     </div>
   );
 }
