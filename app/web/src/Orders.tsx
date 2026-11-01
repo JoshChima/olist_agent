@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { dataQualityAreas } from "./dataQuality";
 import { count, currency } from "./format";
+import { MUTED } from "./tokens";
 import { useJson } from "./useJson";
 
 type Dashboard = {
@@ -46,7 +47,7 @@ export function Orders({ clock }: { clock: string }) {
   const { data, error } = useJson<Dashboard>(`/api/orders?clock=${clock}`);
 
   if (error) return <p role="alert">Couldn't load the order dashboard: {error}</p>;
-  if (!data) return <p>Loading…</p>;
+  if (!data) return <p className={MUTED}>Loading…</p>;
   const { kpis, daily_orders: daily } = data;
 
   return (

@@ -2,6 +2,7 @@ import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAx
 import { FIRST_DAY } from "./clock";
 import { dataQualityAreas } from "./dataQuality";
 import { count } from "./format";
+import { MUTED } from "./tokens";
 import { useJson } from "./useJson";
 
 type Stage = { stage: string; count: number; conversion: number | null };
@@ -31,7 +32,7 @@ export function Funnel({ clock }: { clock: string }) {
   const { data, error } = useJson<Funnel>(`/api/funnel?clock=${clock}`);
 
   if (error) return <p role="alert">Couldn't load the funnel: {error}</p>;
-  if (!data) return <p>Loading…</p>;
+  if (!data) return <p className={MUTED}>Loading…</p>;
 
   const axis = months(clock);
   const rows = axis.map((month) => {

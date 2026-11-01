@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { count } from "./format";
+import { MUTED } from "./tokens";
 import { useJson } from "./useJson";
 
 type Page = { columns: string[]; rows: unknown[][]; total: number; page: number; page_size: number };
@@ -42,7 +43,7 @@ function Rows({ view, clock }: { view: string; clock: string }) {
         Couldn't load {view}: {error}
       </p>
     );
-  if (!data) return <p>Loading…</p>;
+  if (!data) return <p className={MUTED}>Loading…</p>;
   const pages = Math.max(1, Math.ceil(data.total / data.page_size));
   const sortBy = (column: string) =>
     setSort((s) => ({ column, desc: s.column === column ? !s.desc : false }));
