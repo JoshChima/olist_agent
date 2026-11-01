@@ -131,12 +131,12 @@ function Shell({
           </Navigation.Menu>
         </Navigation.Content>
       </Navigation>
-      <div className="flex min-w-0 flex-col overflow-y-auto">
+      <div className="flex min-w-0 flex-col">
         <div className="px-4 pt-2 empty:hidden">
           {!loaded && <p role="status">No data loaded yet.</p>}
           <DeltaStrip clock={clock} />
         </div>
-        {children}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
       </div>
     </div>
   );
@@ -251,7 +251,7 @@ function VariantA({ d, clock }: { d: Dashboard; clock: string }) {
 function VariantB({ d, clock }: { d: Dashboard; clock: string }) {
   const rows = kpiRows(d.kpis);
   return (
-    <main className="flex w-full flex-col gap-4 px-4 py-6">
+    <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-4 px-4 py-6">
       <div className="flex items-baseline gap-3">
         <h1 className="h1 text-[28px]">Orders</h1>
         <p className={`${SMALL} ${MUTED}`}>as of {clock}</p>
@@ -292,12 +292,12 @@ function VariantB({ d, clock }: { d: Dashboard; clock: string }) {
 // One stat bar across the top and four equal panels in a 2x2 grid; the whole page fits one screen.
 function VariantC({ d, clock }: { d: Dashboard; clock: string }) {
   return (
-    <main className="flex w-full flex-col gap-3 px-4 py-4">
+    <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-3 px-4 py-4">
       <div className="flex items-baseline justify-between gap-3">
         <h1 className="h1 text-[22px]">Orders</h1>
         <p className={`${SMALL} ${MUTED}`}>last 30 days, as of {clock}</p>
       </div>
-      <section aria-label="Last 30 days" className={`${CARD} grid grid-cols-5 divide-x px-4 ${LINE} divide-surface-200 dark:divide-surface-700`}>
+      <section aria-label="Last 30 days" className={`${CARD} grid grid-cols-[repeat(5,auto)] divide-x px-4 ${LINE} divide-surface-200 dark:divide-surface-700`}>
         {kpiRows(d.kpis).map(([label, value]) => (
           <div key={label} className="px-4 py-3 first:pl-0 last:pr-0">
             <div className="text-[26px] font-semibold leading-8 tabular-nums">{value}</div>

@@ -29,6 +29,7 @@ A is the safest and the dullest: a report, not a console. B is the only one with
 | Daily orders at half width: 90 bars at ~5px each. The spike reads; a quiet week does not. | C | 🟡 Moderate | Give the daily chart the full column width (borrow B's hero). |
 | Everything fits in 1000px with 170px to spare; no scrolling to reach any figure. | C | ✅ | Keep. |
 | The native date input shows the locale's format (11/24/2017) while every other date on the page is ISO. | all | 🟢 Minor | Inherent to the native input the spec requires; accept, or show the ISO day in the as-of line (all three do). |
+| Tablet (1024×768, checked after the code review asked): C's five equal stat-bar cells are 184px each, so `R$1,012,022.46` at 26px runs into the next cell; the 2×2 grid needs one scroll. B holds (280px column, 614px hero) but its bottom row is cramped further. | B, C | 🟡 Moderate | Stat-bar tracks size to content (`grid-cols-[repeat(5,auto)]`, applied in the prototype after the captures); on tablet the hero-first layout of the verdict scrolls once, which is acceptable. |
 
 ### Visual hierarchy
 
@@ -70,6 +71,10 @@ A is the safest and the dullest: a report, not a console. B is the only one with
 ## Verdict
 
 **C · Console grid**, borrowing B's hero daily chart (full-width top panel) and A's label-over-number tile order. Nothing from the prototype merges to main; AIE-51 builds the shell and AIE-52 the Orders dashboard from this verdict.
+
+## Code review follow-ups (after the captures)
+
+`/code-review` on the branch found no hard standards violations. Spec findings acted on: B and C now cap the content column at 1200px like A; the delta strip sits outside the scrolling pane so it stays under the app bar; the switcher's keyboard handler is gated out of production builds; the stat bar's columns size to content (tablet). Recorded, not changed: the active rail tile uses Skeleton's `preset-tonal-primary` rather than the 20% brand tonal, and the currency has no space after `R$`; both are in the recommendations above for AIE-51 and AIE-52. The captures predate these edits.
 
 ## Notes for the shell ticket (AIE-51), found while building
 
