@@ -15,7 +15,7 @@ infra/              everything else; applied by CD
 
 ## Local development
 
-The simulator reads the Olist data from `data/olist.sqlite` (gitignored), the SQLite build on Kaggle: [`terencicp/e-commerce-dataset-by-olist-as-an-sqlite-database`](https://www.kaggle.com/datasets/terencicp/e-commerce-dataset-by-olist-as-an-sqlite-database). It holds the orders tables and the marketing-funnel tables. `scripts/get-data.sh` downloads it with the Kaggle CLI (through `uvx`), and does nothing if the file is already there. Kaggle serves this public dataset without a sign-in. If the download fails, the script prints the manual steps.
+The simulator reads the Olist data from `data/olist.sqlite` (gitignored), the SQLite build on Kaggle: [`terencicp/e-commerce-dataset-by-olist-as-an-sqlite-database`](https://www.kaggle.com/datasets/terencicp/e-commerce-dataset-by-olist-as-an-sqlite-database). It holds the orders tables and the marketing-funnel tables. `scripts/get-data.sh` downloads it with the Kaggle CLI (through `uvx`), and does nothing if the file is already there. Kaggle serves this public dataset without a sign-in. If you have a Kaggle API token, put it in `.env` as `KAGGLE_API_TOKEN` (see `.env.example`) and the script uses it. If the download fails, the script prints the manual steps.
 
 ```bash
 scripts/get-data.sh           # once: data/olist.sqlite, about 110 MB
@@ -168,6 +168,6 @@ This project uses the **Brazilian E-Commerce Public Dataset by Olist** and the *
 - <https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce>
 - <https://www.kaggle.com/datasets/olistbr/marketing-funnel-olist>
 
-It reads them from the single SQLite file that [terencicp](https://www.kaggle.com/datasets/terencicp/e-commerce-dataset-by-olist-as-an-sqlite-database) built from both.
+This project reads them from the single SQLite file that [terencicp](https://www.kaggle.com/datasets/terencicp/e-commerce-dataset-by-olist-as-an-sqlite-database) built from both.
 
 The dataset isn't included in this repo. Any derived data that contains review text (golden sets, fixtures) lives under `data/` with its own CC BY-NC-SA 4.0 license ([data/LICENSE](data/LICENSE)), and is non-commercial.
