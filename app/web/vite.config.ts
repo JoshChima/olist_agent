@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
@@ -9,4 +10,6 @@ export default defineConfig({
   server: {
     proxy: { "/api": "http://localhost:8080", "/health": "http://localhost:8080" },
   },
+  // Vitest (`pnpm test`): component tests only; e2e/ is Playwright's.
+  test: { environment: "jsdom", include: ["src/**/*.test.tsx"] },
 });

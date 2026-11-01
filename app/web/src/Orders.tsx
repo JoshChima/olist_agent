@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { dataQualityAreas } from "./dataQuality";
+import { count, currency } from "./format";
 import { useJson } from "./useJson";
 
 type Dashboard = {
@@ -53,12 +54,9 @@ export function Orders({ clock }: { clock: string }) {
       <h2 className="h2">Orders as of {clock}</h2>
       <h3 className="h3" style={{ margin: "0 0 0.5rem" }}>Last 30 days</h3>
       <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-        <Kpi label="Orders" value={kpis.orders.toLocaleString()} />
-        <Kpi label="Customers (people)" value={kpis.people.toLocaleString()} />
-        <Kpi
-          label="GMV"
-          value={kpis.gmv.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}
-        />
+        <Kpi label="Orders" value={count(kpis.orders)} />
+        <Kpi label="Customers (people)" value={count(kpis.people)} />
+        <Kpi label="GMV" value={currency(kpis.gmv)} />
         <Kpi label="Avg review score" value={kpis.avg_review_score?.toFixed(2) ?? none} />
         <Kpi label="Delivered late" value={kpis.late_pct === null ? none : `${kpis.late_pct.toFixed(1)}%`} />
       </div>
