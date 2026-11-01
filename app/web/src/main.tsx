@@ -5,6 +5,7 @@ import { DeltaStrip } from "./Delta";
 import { Explore } from "./Explore";
 import { Orders } from "./Orders";
 import { Funnel } from "./Funnel";
+import { ShellOrdersPrototype } from "./prototype/ShellOrdersPrototype";
 import "./app.css";
 
 const STEPS: [Step, string][] = [
@@ -32,6 +33,9 @@ function App() {
     "/funnel": <Funnel clock={clock} />,
   };
   const page = routes[location.pathname] ?? null;
+
+  // PROTOTYPE (AIE-50): the Orders route renders the shell-and-dashboard variants (?variant=A|B|C).
+  if (page === orders) return <ShellOrdersPrototype clock={clock} setClock={setClock} loaded={loaded} />;
 
   return (
     <main style={{ maxWidth: 1100, margin: "2rem auto", padding: "0 1rem" }}>
