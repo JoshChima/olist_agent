@@ -1,6 +1,7 @@
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { FIRST_DAY } from "./clock";
 import { dataQualityAreas } from "./dataQuality";
+import { count } from "./format";
 import { useJson } from "./useJson";
 
 type Stage = { stage: string; count: number; conversion: number | null };
@@ -56,7 +57,7 @@ export function Funnel({ clock }: { clock: string }) {
             )}
             <div style={{ border: "1px solid #ddd", borderRadius: 4, padding: "0.5rem 1rem" }}>
               <div style={{ fontSize: 13, color: "#555" }}>{LABELS[s.stage] ?? s.stage}</div>
-              <strong style={{ fontSize: 24 }}>{s.count.toLocaleString()}</strong>
+              <strong style={{ fontSize: 24 }}>{count(s.count)}</strong>
             </div>
           </li>
         ))}

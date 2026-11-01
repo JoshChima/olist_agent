@@ -28,7 +28,22 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
+      # Chromium's OS libraries; check.sh installs the browser itself.
+      - run: corepack pnpm install --frozen-lockfile && corepack pnpm exec playwright install-deps chromium
+        working-directory: app/web
+        env:
+          COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
       - run: scripts/check.sh web
+      # What Playwright saw, on the platform the baselines are recorded on: the baselines it wrote
+      # or updated, and the actual/diff images of any failure (docs/agents/web-tests.md).
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: web-screenshots
+          path: |
+            app/web/e2e/baselines
+            app/web/test-results
+          if-no-files-found: ignore
 
   iac:
     runs-on: ubuntu-24.04

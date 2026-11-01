@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { count } from "./format";
 import { useJson } from "./useJson";
 
 type Page = { columns: string[]; rows: unknown[][]; total: number; page: number; page_size: number };
@@ -49,7 +50,7 @@ function Rows({ view, clock }: { view: string; clock: string }) {
   return (
     <>
       <p>
-        <strong>{data.total.toLocaleString()}</strong> rows as of {clock}
+        <strong>{count(data.total)}</strong> rows as of {clock}
       </p>
       <div style={{ overflowX: "auto" }}>
         <table style={{ borderCollapse: "collapse", fontSize: 13 }}>

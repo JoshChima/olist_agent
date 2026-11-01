@@ -4,6 +4,8 @@
 
 Before reporting work done, run `scripts/check.sh` (or a section: `app`, `web`, `iac`, `image`). CI runs the same script.
 
+The web tests, and how to update the screenshot baselines a restyle changes: `docs/agents/web-tests.md`.
+
 ## Agent skills
 
 ### Issue tracker
