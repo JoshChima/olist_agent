@@ -19,3 +19,7 @@ Default canonical labels (`needs-triage`, `needs-info`, `ready-for-agent`, `read
 ### Domain docs
 
 Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### PR screenshots
+
+Before/after screenshots for a PR: capture, store and embed them as `docs/agents/pr-evidence.md` says.
