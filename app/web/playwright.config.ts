@@ -1,6 +1,10 @@
 import { defineConfig } from "@playwright/test";
 
-const LOCAL_MAX_DIFF_PIXEL_RATIO = 0.01; // placeholder until measured (AIE-58)
+// Off CI, the share of a page's pixels that may differ from its baseline. Measured on Windows 11
+// against CI's baselines (docs/agents/web-tests.md): the dashboards differ by at most 0.16%, all of
+// it text antialiasing, so 0.5% passes them with margin and still fails a missing tile or a moved
+// panel. The Explorer, a page of 13px identifiers, differs by 4% and sets its own ratio in the spec.
+export const LOCAL_MAX_DIFF_PIXEL_RATIO = 0.005;
 
 // The built app in a real browser (AIE-47 Testing Decisions, seam 1): `pnpm build` first, this
 // serves dist/. Every /api/* call is answered from e2e/fixtures, so no API, database or network
@@ -12,9 +16,7 @@ export default defineConfig({
   snapshotPathTemplate: "{testDir}/baselines/{arg}{ext}",
   expect: {
     toHaveScreenshot: {
-      // CI is the platform the baselines come from, so it compares pixel-exact. Elsewhere only
-      // antialiasing and hinting differ: the measured Windows-vs-CI diff is in web-tests.md, and
-      // this ratio sits just above it, far below what a moved panel or a changed colour produces.
+      // CI is the platform the baselines come from, so it compares pixel-exact.
       maxDiffPixelRatio: process.env.CI ? 0 : LOCAL_MAX_DIFF_PIXEL_RATIO,
     },
   },

@@ -26,12 +26,19 @@ async function open(page: Page, path: string) {
   await page.evaluate(() => document.fonts.ready); // the self-hosted typeface is drawn, not its fallback
 }
 
+// The Explorer is a table of 13px identifiers, and the two rasterisers shade small text differently:
+// measured at 4% of its pixels on Windows against CI's baseline (docs/agents/web-tests.md). A restyle
+// of the table moves every row and goes far past this; a one-cell change is for CI, which compares
+// pixel-exact, to catch.
+const EXPLORER_LOCAL_MAX_DIFF_PIXEL_RATIO = 0.05;
+
 for (const path of PAGES) {
   for (const scheme of ["light", "dark"] as const) {
     test(`${path} at ${CLOCK} in ${scheme} mode matches its baseline`, async ({ page }) => {
       await page.emulateMedia({ colorScheme: scheme });
       await open(page, path);
-      await expect(page).toHaveScreenshot(`${path.slice(1)}-${scheme}.png`, { fullPage: true });
+      const local = path === "/explore" && !process.env.CI ? { maxDiffPixelRatio: EXPLORER_LOCAL_MAX_DIFF_PIXEL_RATIO } : {};
+      await expect(page).toHaveScreenshot(`${path.slice(1)}-${scheme}.png`, { fullPage: true, ...local });
     });
   }
 }
