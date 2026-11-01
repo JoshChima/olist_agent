@@ -4,7 +4,7 @@
 
 ## Summary
 
-Issues found: 4. Critical: 0. Major: 1 (fixed). Minor: 3 (filed).
+Issues found: 4. Critical: 0. Major: 1 (fixed). Minor: 3 (filed as [AIE-59](https://linear.app/gloph-software-factory/issue/AIE-59)).
 
 ## Findings
 

@@ -24,6 +24,13 @@ async function open(page: Page, path: string) {
   await expect(page.getByText("Loading…")).toHaveCount(0);
   await page.clock.runFor(2000);
   await page.evaluate(() => document.fonts.ready); // the self-hosted typeface is drawn, not its fallback
+  // The content column scrolls inside the shell (AIE-51), so a full-page shot is only the viewport.
+  // Grow the viewport to the column's full height first, so the whole page is in the baseline.
+  const height = await page.evaluate(() => {
+    const column = document.querySelector("main")!.parentElement!;
+    return Math.ceil(column.getBoundingClientRect().top + column.scrollHeight);
+  });
+  await page.setViewportSize({ width: 1280, height: Math.max(1000, height) });
 }
 
 // The Explorer is a table of 13px identifiers, and the two rasterisers shade small text differently:

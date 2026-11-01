@@ -3,7 +3,7 @@
 `scripts/check.sh web` runs, after the build, the two seams AIE-47's Testing Decisions name. Both need no API, database, Docker or network.
 
 - **Vitest** (`pnpm test`, `app/web/src/app.test.tsx`): exactly three behaviours, with fetch stubbed. Counts format with locale separators and currency with two decimals; the step buttons are disabled at the dataset's first and last day; the delta strip says "rewound" after a rewind. Don't add per-component suites; a new behaviour worth pinning gets its own line in the spec first.
-- **Playwright** (`pnpm e2e`, `app/web/e2e/pages.spec.ts`): serves `dist/` with `vite preview` and answers every `/api/*` request from `app/web/e2e/fixtures/<path>.json` (the deployed API's answer at clock 2018-02-17; `/api/explore/orders` is `explore-orders.json`). For Orders, Funnel and Explorer in light and dark it compares a full-page screenshot to `app/web/e2e/baselines/<page>-<mode>.png`; one interaction, a forward day step, asserts the delta strip's text from `delta.json`.
+- **Playwright** (`pnpm e2e`, `app/web/e2e/pages.spec.ts`): serves `dist/` with `vite preview` and answers every `/api/*` request from `app/web/e2e/fixtures/<path>.json` (the deployed API's answer at clock 2018-02-17; `/api/explore/orders` is `explore-orders.json`). For Orders, Funnel and Explorer in light and dark it compares a full-page screenshot to `app/web/e2e/baselines/<page>-<mode>.png` (the content column scrolls inside the shell, so the spec first grows the viewport to the column's height, never below 1000px, and the shell's bar and rail stretch with it); one interaction, a forward day step, asserts the delta strip's text from `delta.json`.
 
 ## Screenshot baselines are recorded on CI and compared everywhere
 
