@@ -23,12 +23,12 @@ async function open(page: Page, path: string) {
   await page.goto(`${path}?clock=${CLOCK}`);
   await expect(page.getByText("Loading…")).toHaveCount(0);
   await page.clock.runFor(2000);
+  await page.evaluate(() => document.fonts.ready); // the self-hosted typeface is drawn, not its fallback
 }
 
 for (const path of PAGES) {
   for (const scheme of ["light", "dark"] as const) {
     test(`${path} at ${CLOCK} in ${scheme} mode matches its baseline`, async ({ page }) => {
-      test.skip(process.platform !== "linux", "baselines are recorded on linux, CI's platform (docs/agents/web-tests.md)");
       await page.emulateMedia({ colorScheme: scheme });
       await open(page, path);
       await expect(page).toHaveScreenshot(`${path.slice(1)}-${scheme}.png`, { fullPage: true });

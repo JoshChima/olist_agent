@@ -3,11 +3,17 @@
 @import '@skeletonlabs/skeleton';
 @import '@skeletonlabs/skeleton-react';
 @import '@skeletonlabs/skeleton/themes/concord';
+/* The one typeface (ADR-0011 as amended): self-hosted, so every platform draws the same glyphs. */
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
 
 /*
- * Theme overrides. The only place a theme value may ever change, and only after
- * Concord has been seen on real pages. Changing it means regenerating the Design
- * System artifact linked on AIE-47. Empty: Concord is used verbatim.
+ * Theme overrides. The only place a theme value may ever change. Changing it means
+ * regenerating the Design System artifact linked on AIE-47. Its only content is the
+ * typeface: Inter for body and headings, JetBrains Mono for identifiers (AIE-58).
  */
 [data-theme='concord'] {
+  --typo-base--font-family: 'Inter Variable', sans-serif;
+  --typo-heading--font-family: 'Inter Variable', sans-serif;
+  --font-mono: 'JetBrains Mono Variable', monospace;
 }
