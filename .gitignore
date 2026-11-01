@@ -18,3 +18,4 @@ dist/
 
 # The Olist source data and scratch databases are never committed (data/LICENSE).
 *.sqlite
+data/.download.*/

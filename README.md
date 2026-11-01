@@ -15,8 +15,11 @@ infra/              everything else; applied by CD
 
 ## Local development
 
+The simulator reads the Olist data from `data/olist.sqlite` (gitignored), the SQLite build on Kaggle: [`terencicp/e-commerce-dataset-by-olist-as-an-sqlite-database`](https://www.kaggle.com/datasets/terencicp/e-commerce-dataset-by-olist-as-an-sqlite-database). It holds the orders tables and the marketing-funnel tables. `scripts/get-data.sh` downloads it with the Kaggle CLI (through `uvx`), and does nothing if the file is already there. Kaggle serves this public dataset without a sign-in. If you have a Kaggle API token, put it in `.env` as `KAGGLE_API_TOKEN` (see `.env.example`) and the script uses it. If the download fails, the script prints the manual steps.
+
 ```bash
-docker compose up --build     # http://localhost:8080 serves the SPA, /health and /api/hello
+scripts/get-data.sh           # once: data/olist.sqlite, about 110 MB
+docker compose up --build     # http://localhost:8080; the loader job loads the file first
 ```
 
 Or run the two halves with hot reload:
@@ -83,9 +86,10 @@ terraform -chdir=infra plan -var budget_alert_email=you@example.com -var operato
 
 ## Uploading data
 
-The deployed app shows "no data loaded yet" until you upload the Kaggle `olist.sqlite`. Put it in `data/` (gitignored), sign in to the toolbox, and upload it:
+The deployed app shows "no data loaded yet" until you upload the Kaggle `olist.sqlite`. Get it into `data/` (see [Local development](#local-development)), sign in to the toolbox, and upload it:
 
 ```bash
+scripts/get-data.sh                 # if data/olist.sqlite isn't there yet
 scripts/tf-toolbox.sh login         # once per toolbox container
 scripts/upload-data.sh              # or: scripts/upload-data.sh data/other.sqlite
 gh workflow run cd.yml              # CD's loader job loads it
@@ -163,5 +167,7 @@ This project uses the **Brazilian E-Commerce Public Dataset by Olist** and the *
 
 - <https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce>
 - <https://www.kaggle.com/datasets/olistbr/marketing-funnel-olist>
+
+This project reads them from the single SQLite file that [terencicp](https://www.kaggle.com/datasets/terencicp/e-commerce-dataset-by-olist-as-an-sqlite-database) built from both.
 
 The dataset isn't included in this repo. Any derived data that contains review text (golden sets, fixtures) lives under `data/` with its own CC BY-NC-SA 4.0 license ([data/LICENSE](data/LICENSE)), and is non-commercial.
