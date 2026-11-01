@@ -15,3 +15,5 @@ export const FOCUS =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 dark:focus-visible:outline-primary-300";
 /** A one-line `role="status"` strip on the `info-tonal` ground: the delta strip, "No data loaded yet.". */
 export const STATUS = `preset-tonal-tertiary rounded-base truncate px-3 py-2 tabular-nums ${SMALL}`;
+/** `section-title`: chart panel, stat row and table headings, 17px/24px bold. */
+export const SECTION_TITLE = "h3 text-[17px] leading-6";
