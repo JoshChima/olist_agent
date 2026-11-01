@@ -1,17 +1,12 @@
 import { StrictMode, useEffect, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { FIRST_DAY, LAST_DAY, step, useClock, type Step } from "./clock";
+import { useClock } from "./clock";
+import { ClockControls } from "./ClockControls";
 import { DeltaStrip } from "./Delta";
 import { Explore } from "./Explore";
 import { Orders } from "./Orders";
 import { Funnel } from "./Funnel";
 import "./app.css";
-
-const STEPS: [Step, string][] = [
-  ["month", "M"],
-  ["week", "W"],
-  ["day", "D"],
-];
 
 function App() {
   const [clock, setClock] = useClock();
@@ -40,40 +35,7 @@ function App() {
         <a className="anchor" href={`/explore?clock=${clock}`}>Explorer</a>
         <a className="anchor" href={`/orders?clock=${clock}`}>Orders</a>
         <a className="anchor" href={`/funnel?clock=${clock}`}>Funnel</a>
-        <label>
-          Clock{" "}
-          <input
-            type="date"
-            min={FIRST_DAY}
-            max={LAST_DAY}
-            value={clock}
-            onChange={(e) => setClock(e.target.value)}
-          />
-        </label>
-        <span style={{ display: "flex", gap: "0.25rem" }}>
-          {STEPS.map(([unit, short]) => (
-            <button
-              className="btn btn-sm preset-tonal"
-              key={unit}
-              title={`Back one ${unit}`}
-              disabled={clock <= FIRST_DAY}
-              onClick={() => setClock(step(clock, unit, -1))}
-            >
-              −1{short}
-            </button>
-          ))}
-          {[...STEPS].reverse().map(([unit, short]) => (
-            <button
-              className="btn btn-sm preset-tonal"
-              key={unit}
-              title={`Forward one ${unit}`}
-              disabled={clock >= LAST_DAY}
-              onClick={() => setClock(step(clock, unit, 1))}
-            >
-              +1{short}
-            </button>
-          ))}
-        </span>
+        <ClockControls clock={clock} onChange={setClock} />
       </nav>
       {!loaded && <p role="status">No data loaded yet.</p>}
       <DeltaStrip clock={clock} />

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { count } from "./format";
 import { useJson } from "./useJson";
 
 // The API's count keys, in display order (GLOSSARY.md "Delta event").
@@ -40,7 +41,7 @@ export function DeltaStrip({ clock }: { clock: string }) {
       : error
         ? `${at}: couldn't load the delta event: ${error}`
         : `${at}: ${Object.entries(LABELS)
-            .map(([k, label]) => `${data!.counts[k].toLocaleString()} ${label}`)
+            .map(([k, label]) => `${count(data!.counts[k])} ${label}`)
             .join(", ")}`;
   return (
     <p role="status" className="preset-tonal-tertiary" style={{ borderRadius: 6, padding: "0.5rem 0.75rem" }}>
