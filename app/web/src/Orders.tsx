@@ -22,6 +22,11 @@ type Dashboard = {
 
 const none = "–";
 
+// Every 14th day counted back from the clock, so the axis ends on the clock's day. Recharts' own
+// thinning picks ticks by measured label width, which differs by a pixel between the platforms the
+// screenshot baselines compare across (docs/agents/web-tests.md) and so picked different days.
+const fortnightly = (days: { day: string }[]) => days.filter((_, i) => (days.length - 1 - i) % 14 === 0).map((d) => d.day);
+
 /**
  * The business as it looked on the clock's day: 30-day KPIs as a row of stat tiles, then one chart
  * panel per chart. The layout AIE-50 chose: the daily orders first and full width, status and
@@ -55,14 +60,14 @@ export function Orders({ clock }: { clock: string }) {
         <BarChart data={daily} margin={{ top: 20, right: 32 }}>
           <CartesianGrid vertical={false} />
           {daily.length > 0 && dataQualityAreas(daily[0].day, daily[daily.length - 1].day)}
-          <XAxis dataKey="day" minTickGap={24} />
-          <YAxis allowDecimals={false} width="auto" />
+          <XAxis dataKey="day" ticks={fortnightly(daily)} interval={0} />
+          <YAxis allowDecimals={false} width={56} />
           {chartTooltip}
           <Bar dataKey="orders" name="Orders" fill={SERIES[0]} radius={[2, 2, 0, 0]} isAnimationActive={false} />
         </BarChart>
       </ChartPanel>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid gap-6 lg:grid-cols-2">
         <ChartPanel title="Orders by status" height={300}>
           <BarChart data={data.by_status} layout="vertical" margin={{ right: 32 }}>
             <XAxis type="number" allowDecimals={false} />
@@ -86,7 +91,7 @@ export function Orders({ clock }: { clock: string }) {
         <BarChart data={data.by_state.map((s) => ({ ...s, state: s.state ?? "(none)" }))} margin={{ top: 8, right: 32 }}>
           <CartesianGrid vertical={false} />
           <XAxis dataKey="state" interval={0} />
-          <YAxis allowDecimals={false} width="auto" />
+          <YAxis allowDecimals={false} width={56} />
           {chartTooltip}
           <Legend iconType="square" iconSize={10} />
           <Bar dataKey="orders" name="Orders" fill={SERIES[0]} radius={[2, 2, 0, 0]} isAnimationActive={false} />
