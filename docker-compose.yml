@@ -1,5 +1,5 @@
-# The whole simulator offline: put the Kaggle olist.sqlite in data/ (or point OLIST_DATA
-# at its folder) and run `docker compose up`. Local auth is a password DSN (ADR-0010).
+# The whole simulator offline: scripts/get-data.sh puts olist.sqlite in data/ (or point
+# OLIST_DATA at its folder), then `docker compose up`. Local auth is a password DSN (ADR-0010).
 services:
   db:
     image: pgvector/pgvector:pg17
