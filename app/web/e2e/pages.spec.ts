@@ -37,8 +37,8 @@ for (const path of PAGES) {
     test(`${path} at ${CLOCK} in ${scheme} mode matches its baseline`, async ({ page }) => {
       await page.emulateMedia({ colorScheme: scheme });
       await open(page, path);
-      const local = path === "/explore" && !process.env.CI ? { maxDiffPixelRatio: EXPLORER_LOCAL_MAX_DIFF_PIXEL_RATIO } : {};
-      await expect(page).toHaveScreenshot(`${path.slice(1)}-${scheme}.png`, { fullPage: true, ...local });
+      const tolerance = path === "/explore" && !process.env.CI ? { maxDiffPixelRatio: EXPLORER_LOCAL_MAX_DIFF_PIXEL_RATIO } : {};
+      await expect(page).toHaveScreenshot(`${path.slice(1)}-${scheme}.png`, { fullPage: true, ...tolerance });
     });
   }
 }

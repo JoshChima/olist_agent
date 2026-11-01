@@ -10,7 +10,8 @@
 /*
  * Theme overrides. The only place a theme value may ever change. Changing it means
  * regenerating the Design System artifact linked on AIE-47. Its only content is the
- * typeface: Inter for body and headings, JetBrains Mono for identifiers (AIE-58).
+ * typeface (AIE-58): Concord's base and heading families become Inter, and Tailwind's
+ * mono token, which Skeleton's code, pre and kbd read, becomes JetBrains Mono.
  */
 [data-theme='concord'] {
   --typo-base--font-family: 'Inter Variable', sans-serif;

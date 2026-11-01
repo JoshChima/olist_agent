@@ -4,7 +4,7 @@ import { defineConfig } from "@playwright/test";
 // against CI's baselines (docs/agents/web-tests.md): the dashboards differ by at most 0.16%, all of
 // it text antialiasing, so 0.5% passes them with margin and still fails a missing tile or a moved
 // panel. The Explorer, a page of 13px identifiers, differs by 4% and sets its own ratio in the spec.
-export const LOCAL_MAX_DIFF_PIXEL_RATIO = 0.005;
+const LOCAL_MAX_DIFF_PIXEL_RATIO = 0.005;
 
 // The built app in a real browser (AIE-47 Testing Decisions, seam 1): `pnpm build` first, this
 // serves dist/. Every /api/* call is answered from e2e/fixtures, so no API, database or network
