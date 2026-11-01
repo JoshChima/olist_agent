@@ -25,6 +25,10 @@ export default defineConfig({
     viewport: { width: 1280, height: 1000 },
     locale: "en-US", // number formatting in the screenshots
     timezoneId: "UTC",
+    // Grayscale antialiasing and whole-pixel glyph placement on every platform. With LCD text on,
+    // Windows and Linux draw different colour fringes around the same glyph, and the pixel diff
+    // reaches a tenth of a text-dense page; without it only rasteriser rounding is left.
+    launchOptions: { args: ["--disable-lcd-text", "--disable-font-subpixel-positioning", "--font-render-hinting=none"] },
   },
   webServer: {
     command: "vite preview --host 127.0.0.1 --port 4173 --strictPort",
