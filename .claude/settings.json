@@ -1,5 +1,29 @@
 {
   "permissions": {
+    "allow": [
+      "mcp__plugin_productivity_linear__get_issue",
+      "mcp__Azure_MCP_Server__quota",
+      "Bash(gh run watch *)",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__d10ea442-67fe-45ec-9bb9-120709f7ad96__get_issue",
+      "mcp__plugin_productivity_linear__list_issues",
+      "Bash(npm view *)",
+      "Bash(git merge-base *)",
+      "mcp__playwright__browser_emulate_media",
+      "mcp__d10ea442-67fe-45ec-9bb9-120709f7ad96__list_comments",
+      "Bash(corepack pnpm test)",
+      "mcp__Claude_Browser__get_page_text",
+      "Bash(nvidia-smi --query-gpu=*)",
+      "Bash(tasklist *)",
+      "mcp__plugin_productivity_linear__list_comments",
+      "Bash(git check-ignore *)",
+      "mcp__Azure_MCP_Server__monitor",
+      "Bash(gh secret list)",
+      "mcp__d10ea442-67fe-45ec-9bb9-120709f7ad96__list_issues",
+      "mcp__28362a6f-a815-44c7-825e-6501d05f0bff__get_thread",
+      "mcp__Azure_MCP_Server__subscription_list"
+    ],
     "ask": [
       "Bash(scripts/tf-toolbox.sh apply:*)"
     ]
