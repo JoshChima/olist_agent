@@ -25,7 +25,7 @@ Headless capture can catch Recharts mid-animation, so bars may be missing. Say s
 
 ## Store
 
-Commit the images under `docs/evidence/<issue>/` (e.g. `docs/evidence/aie-48/`), in their own commit. They stay outside `app/`, the Docker build context, so they never deploy. Name them `before-<page>.png` and `after-<page>-<light|dark>.png`.
+Commit the images under `docs/evidence/<issue>/` (e.g. `docs/evidence/aie-48/`), in their own commit. They stay outside `app/`, the Docker build context, so they never deploy. Name them `before-<page>-<light|dark>.png` and `after-<page>-<light|dark>.png`: both modes for both shots, since every restyle changes both.
 
 Screenshots stay in the repo. Uploading them to Linear or anywhere else sends files to a third party, and those links don't render on GitHub.
 
@@ -37,4 +37,4 @@ Link each image by the raw URL of the commit that added it, so it renders in the
 ![Orders after, dark](https://github.com/JoshChima/olist_agent/raw/<sha>/docs/evidence/aie-48/after-orders-dark.png)
 ```
 
-A table with one row per page and before, light and dark columns reads best. [JoshChima/olist_agent#25](https://github.com/JoshChima/olist_agent/pull/25) is the worked example.
+A table with one row per page and a column per shot reads best. [JoshChima/olist_agent#36](https://github.com/JoshChima/olist_agent/pull/36) is the worked example.
