@@ -80,7 +80,8 @@ function Rows({ view, clock }: { view: string; clock: string }) {
                 >
                   <button className={`-mx-1 rounded-base px-1 hover:preset-tonal ${MUTED} ${FOCUS}`} onClick={() => sortBy(c)}>
                     {c}
-                    {sort.column === c && (sort.desc ? " ▼" : " ▲")}
+                    {/* aria-sort on the cell says the order; ↑ and ↓ are in Inter's shipped subset, ▲ ▼ are not */}
+                    {sort.column === c && <span aria-hidden="true">{sort.desc ? " ↓" : " ↑"}</span>}
                   </button>
                 </th>
               ))}

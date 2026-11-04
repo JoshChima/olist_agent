@@ -68,7 +68,11 @@ export function Funnel({ clock }: { clock: string }) {
                 <div className={`${SMALL} ${MUTED} flex flex-col items-center tabular-nums`}>
                   <span className="sr-only">Conversion from the previous stage:</span>
                   <span>{s.conversion === null ? "–" : `${(s.conversion * 100).toFixed(1)}%`}</span>
-                  <span aria-hidden="true">→</span>
+                  {/* Drawn, not typed: Inter's shipped subsets lack →, so the glyph fell back to a
+                      system font that differs per platform. Stroked in the text colour. */}
+                  <svg aria-hidden="true" viewBox="0 0 16 16" className="size-4 fill-none stroke-current stroke-[1.5]">
+                    <path d="M2 8h11M9 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </div>
               )}
               <StatTile label={LABELS[s.stage] ?? s.stage} value={count(s.count)} />

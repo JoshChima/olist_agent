@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { cloneElement, type ReactElement } from "react";
 import { ResponsiveContainer, Tooltip, type TooltipContentProps } from "recharts";
 import { count } from "./format";
 import { CARD, LINE, MUTED, SECTION_TITLE, SMALL } from "./tokens";
@@ -11,18 +11,17 @@ const pair = (light: string, dark: string) => `light-dark(var(--color-${light}),
 
 /**
  * `series-1` to `series-4`, in order: indigo, blue, pink, grey. Pass as a Bar or Line `fill`/`stroke`.
- * Then the same four families' tints, for a chart with more series than the design system names
- * (the Funnel's eight origins): two or three steps further from the card, darker in light mode and
- * lighter in dark, so no two stack alike and the legend, which Recharts writes in the series colour,
- * stays legible. Not yet in the design system's tokens (AIE-55 regenerates it).
+ * Then `series-5` to `series-8`, the same four families' tints, for a chart with more series than four
+ * (the Funnel's eight origins): further from the card, darker in light mode and lighter in dark, so no
+ * two stack alike. Every one is at least 3:1 on `card` in both modes (AIE-55's accessibility review).
  */
 export const SERIES = [
   pair("primary-500", "primary-400"),
-  pair("tertiary-600", "tertiary-400"),
+  pair("tertiary-700", "tertiary-400"),
   pair("secondary-600", "secondary-300"),
-  pair("surface-500", "surface-400"),
+  pair("surface-500", "surface-300"),
   pair("primary-800", "primary-200"),
-  pair("tertiary-800", "tertiary-200"),
+  pair("tertiary-900", "tertiary-200"),
   pair("secondary-800", "secondary-100"),
   pair("surface-700", "surface-200"),
 ];
@@ -44,18 +43,28 @@ const CHART = [
   "[&_.recharts-reference-area-rect]:[fill-opacity:0.18]",
   "[&_.recharts-label]:fill-[light-dark(var(--color-surface-600),var(--color-surface-200))]",
   "[&_.recharts-label]:text-[13px]",
+  // legend labels: `small` `ink-muted`; Recharts writes them in the series colour as an inline style,
+  // which only an !important rule beats, and the swatch beside each still carries the colour
+  "[&_.recharts-legend-item-text]:text-[light-dark(var(--color-surface-600),var(--color-surface-200))]!",
+  "[&_.recharts-legend-item-text]:text-[13px]",
+  // the chart surface takes keyboard focus (Recharts' accessibility layer): the `focus` ring
+  "[&_.recharts-surface:focus-visible]:outline-2",
+  "[&_.recharts-surface:focus-visible]:outline-offset-2",
+  "[&_.recharts-surface:focus-visible]:outline-[light-dark(var(--color-primary-500),var(--color-primary-300))]",
 ].join(" ");
 
 /**
  * A card with a section title and one Recharts chart (design system ChartPanel), full width of
  * its column. Panels stack `gap-6` apart; the Orders dashboard puts two in a `grid-cols-2` row.
+ * The chart is named after the panel: Recharts passes `aria-label` to its focusable SVG surface, so a
+ * screen reader names the chart it lands on (an SVG `title` would also pop a native hover tooltip).
  */
-export function ChartPanel({ title, height, children }: { title: string; height: number; children: ReactNode }) {
+export function ChartPanel({ title, height, children }: { title: string; height: number; children: ReactElement<{ "aria-label"?: string }> }) {
   return (
     <section className={`${CARD} ${LINE} ${CHART} flex min-w-0 flex-col gap-2 rounded-container border p-4`}>
       <h2 className={SECTION_TITLE}>{title}</h2>
       <ResponsiveContainer width="100%" height={height}>
-        {children}
+        {cloneElement(children, { "aria-label": title })}
       </ResponsiveContainer>
     </section>
   );
