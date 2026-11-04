@@ -31,8 +31,8 @@ function months(clock: string): string[] {
 
 /**
  * MQL -> closed deal -> active seller at the clock, and MQLs a month by origin. The stages are stat
- * tiles joined by arrows carrying the conversion into the next stage (design system FunnelStage);
- * each arrow sits in its tile's list item, so the row wraps tile and arrow together. The items grow
+ * tiles joined by arrows carrying the conversion into each stage (design system FunnelStage); each
+ * arrow sits in the list item of the stage it leads to, so the row wraps arrow and tile together. The items grow
  * to fill the row, as the Orders tiles do, which also keeps each tile at its 150px minimum.
  */
 export function Funnel({ clock }: { clock: string }) {
@@ -53,7 +53,6 @@ export function Funnel({ clock }: { clock: string }) {
     if (row) row[key] = (row[key] as number) + mqls;
   }
   const last = axis[axis.length - 1];
-  const { stages } = data;
 
   return (
     <>
@@ -63,20 +62,18 @@ export function Funnel({ clock }: { clock: string }) {
           <p className={`${SMALL} ${MUTED}`}>as of {clock}</p>
         </div>
         <ol className="flex flex-wrap items-center gap-4">
-          {stages.map((s, i) => {
-            const next = stages[i + 1];
-            return (
-              <li key={s.stage} className="flex flex-[1_1_auto] items-center gap-4">
-                <StatTile label={LABELS[s.stage] ?? s.stage} value={count(s.count)} />
-                {next && (
-                  <div className={`${SMALL} ${MUTED} flex flex-col items-center tabular-nums`}>
-                    <span>{next.conversion === null ? "–" : `${(next.conversion * 100).toFixed(1)}%`}</span>
-                    <span aria-hidden="true">→</span>
-                  </div>
-                )}
-              </li>
-            );
-          })}
+          {data.stages.map((s) => (
+            <li key={s.stage} className="flex flex-[1_1_auto] items-center gap-4">
+              {s.stage !== "mql" && (
+                <div className={`${SMALL} ${MUTED} flex flex-col items-center tabular-nums`}>
+                  <span className="sr-only">Conversion from the previous stage:</span>
+                  <span>{s.conversion === null ? "–" : `${(s.conversion * 100).toFixed(1)}%`}</span>
+                  <span aria-hidden="true">→</span>
+                </div>
+              )}
+              <StatTile label={LABELS[s.stage] ?? s.stage} value={count(s.count)} />
+            </li>
+          ))}
         </ol>
       </section>
 
@@ -84,8 +81,8 @@ export function Funnel({ clock }: { clock: string }) {
         <BarChart data={rows} margin={{ top: 20, right: 32 }}>
           <CartesianGrid vertical={false} />
           {dataQualityAreas(axis[0], last)}
-          {/* Recharts thins the months by label width: all 18 fit at the baselines' 1280px with room
-              to spare, so the platforms agree there, and a tablet's narrower plot drops some. */}
+          {/* Recharts thins the months by label width: the baselines' 18 months fit at 1280px with
+              room to spare, so the platforms agree there, and a tablet's narrower plot drops some. */}
           <XAxis dataKey="month" />
           <YAxis allowDecimals={false} width={56} />
           {chartTooltip}
