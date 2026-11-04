@@ -41,8 +41,9 @@ app() {
 web() {
   (
     cd app/web
-    # Nothing escapes the design system (AIE-47): no inline style attribute, no hex colour literal. No exceptions.
-    if grep -rnE '\bstyle=|#[0-9a-fA-F]{3,8}\b' src; then echo "inline style or hex colour in app/web/src: use the design system's tokens" >&2; exit 1; fi
+    # Nothing escapes the design system (AIE-47): no inline style attribute (Recharts' contentStyle= and
+# the like included), no hex colour literal. No exceptions.
+    if grep -rnE '[sS]tyle=|#[0-9a-fA-F]{3,8}\b' src; then echo "inline style or hex colour in app/web/src: use the design system's tokens" >&2; exit 1; fi
     corepack pnpm install --frozen-lockfile
     corepack pnpm build # includes tsc type-check
     corepack pnpm test # Vitest: the three pinned behaviours
