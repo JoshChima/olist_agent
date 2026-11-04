@@ -1,21 +1,23 @@
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Legend, XAxis, YAxis } from "recharts";
+import { ChartPanel, chartTooltip, SERIES } from "./ChartPanel";
 import { FIRST_DAY } from "./clock";
 import { dataQualityAreas } from "./dataQuality";
 import { count } from "./format";
-import { MUTED } from "./tokens";
+import { StatTile } from "./StatTile";
+import { MUTED, SECTION_TITLE, SMALL } from "./tokens";
 import { useJson } from "./useJson";
 
 type Stage = { stage: string; count: number; conversion: number | null };
 type Funnel = { stages: Stage[]; monthly_mqls: { month: string; origin: string; mqls: number }[] };
 
+// GLOSSARY.md "Funnel stage".
 const LABELS: Record<string, string> = {
-  mql: "MQLs",
-  closed_deal: "Closed deals",
-  active_seller: "Active sellers",
+  mql: "MQL",
+  closed_deal: "Closed deal",
+  active_seller: "Active seller",
 };
 // Color follows the origin, in a fixed order; the source's rarer origins fold into "other".
 const ORIGINS = ["organic_search", "paid_search", "social", "unknown", "direct_traffic", "email", "referral", "other"];
-const COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"];
 
 /** Every month from the dataset's first day to the clock, so gaps and windows show. */
 function months(clock: string): string[] {
@@ -27,7 +29,12 @@ function months(clock: string): string[] {
   }
 }
 
-/** MQL -> closed deal -> active seller at the clock, and MQLs a month by origin. */
+/**
+ * MQL -> closed deal -> active seller at the clock, and MQLs a month by origin. The stages are stat
+ * tiles joined by arrows carrying the conversion into the next stage (design system FunnelStage);
+ * each arrow sits in its tile's list item, so the row wraps tile and arrow together. The items grow
+ * to fill the row, as the Orders tiles do, which also keeps each tile at its 150px minimum.
+ */
 export function Funnel({ clock }: { clock: string }) {
   const { data, error } = useJson<Funnel>(`/api/funnel?clock=${clock}`);
 
@@ -46,40 +53,51 @@ export function Funnel({ clock }: { clock: string }) {
     if (row) row[key] = (row[key] as number) + mqls;
   }
   const last = axis[axis.length - 1];
+  const { stages } = data;
 
   return (
-    <section>
-      <h2 className="h2">Funnel as of {clock}</h2>
-      <ol style={{ display: "flex", flexWrap: "wrap", gap: "1rem", listStyle: "none", padding: 0, alignItems: "center" }}>
-        {data.stages.map((s) => (
-          <li key={s.stage} style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-            {s.stage !== "mql" && (
-              <span>→ {s.conversion === null ? "–" : `${(s.conversion * 100).toFixed(1)}%`} →</span>
-            )}
-            <div style={{ border: "1px solid #ddd", borderRadius: 4, padding: "0.5rem 1rem" }}>
-              <div style={{ fontSize: 13, color: "#555" }}>{LABELS[s.stage] ?? s.stage}</div>
-              <strong style={{ fontSize: 24 }}>{count(s.count)}</strong>
-            </div>
-          </li>
-        ))}
-      </ol>
-      <h3 className="h3">MQLs a month, by origin</h3>
-      <ResponsiveContainer width="100%" height={320}>
-        <BarChart data={rows}>
-          <CartesianGrid vertical={false} stroke="#eee" />
+    <>
+      <section className="flex flex-col gap-2">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className={SECTION_TITLE}>Funnel stages</h2>
+          <p className={`${SMALL} ${MUTED}`}>as of {clock}</p>
+        </div>
+        <ol className="flex flex-wrap items-center gap-4">
+          {stages.map((s, i) => {
+            const next = stages[i + 1];
+            return (
+              <li key={s.stage} className="flex flex-[1_1_auto] items-center gap-4">
+                <StatTile label={LABELS[s.stage] ?? s.stage} value={count(s.count)} />
+                {next && (
+                  <div className={`${SMALL} ${MUTED} flex flex-col items-center tabular-nums`}>
+                    <span>{next.conversion === null ? "–" : `${(next.conversion * 100).toFixed(1)}%`}</span>
+                    <span aria-hidden="true">→</span>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+
+      <ChartPanel title="MQLs a month, by origin" height={320}>
+        <BarChart data={rows} margin={{ top: 20, right: 32 }}>
+          <CartesianGrid vertical={false} />
           {dataQualityAreas(axis[0], last)}
-          <XAxis dataKey="month" fontSize={12} />
-          <YAxis allowDecimals={false} fontSize={12} />
-          <Tooltip />
-          <Legend />
+          {/* Recharts thins the months by label width: all 18 fit at the baselines' 1280px with room
+              to spare, so the platforms agree there, and a tablet's narrower plot drops some. */}
+          <XAxis dataKey="month" />
+          <YAxis allowDecimals={false} width={56} />
+          {chartTooltip}
+          <Legend iconType="square" iconSize={10} />
           {ORIGINS.map((o, i) => (
-            <Bar key={o} dataKey={o} stackId="mqls" fill={COLORS[i]} isAnimationActive={false} />
+            <Bar key={o} dataKey={o} stackId="mqls" fill={SERIES[i]} isAnimationActive={false} />
           ))}
         </BarChart>
-      </ResponsiveContainer>
-      <p style={{ fontSize: 13, color: "#555" }}>
+      </ChartPanel>
+      <p className={`${SMALL} ${MUTED}`}>
         Shaded months are data-quality windows: changes there are data artifacts, not business change.
       </p>
-    </section>
+    </>
   );
 }
