@@ -34,7 +34,8 @@ export function DeltaStrip({ clock }: { clock: string }) {
   const { data, error, loading } = useJson<{ counts: Record<string, number> }>(url);
 
   if (!warp) return null;
-  const at = `${warp.from} → ${warp.to}`;
+  // Words, not →: Inter's shipped subsets lack the arrow, so it fell back to a per-platform font.
+  const at = `from ${warp.from} to ${warp.to}`;
   const text = !url
     ? "rewound"
     : loading

@@ -70,5 +70,5 @@ test("a forward step shows the delta event from the fixture", async ({ page }) =
   const summary = Object.entries(DELTA_LABELS)
     .map(([key, label]) => `${delta.counts[key].toLocaleString("en-US")} ${label}`)
     .join(", ");
-  await expect(page.getByRole("status")).toHaveText(`${delta.from} → ${delta.to}: ${summary}`);
+  await expect(page.getByRole("status")).toHaveText(`from ${delta.from} to ${delta.to}: ${summary}`);
 });
