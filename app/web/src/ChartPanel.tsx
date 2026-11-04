@@ -9,12 +9,22 @@ import { CARD, LINE, MUTED, SECTION_TITLE, SMALL } from "./tokens";
 // chart names only its series. A chart outside a panel keeps Recharts' defaults.
 const pair = (light: string, dark: string) => `light-dark(var(--color-${light}),var(--color-${dark}))`;
 
-/** `series-1` to `series-4`, in order: indigo, blue, pink, grey. Pass as a Bar or Line `fill`/`stroke`. */
+/**
+ * `series-1` to `series-4`, in order: indigo, blue, pink, grey. Pass as a Bar or Line `fill`/`stroke`.
+ * Then the same four families' tints, for a chart with more series than the design system names
+ * (the Funnel's eight origins): two or three steps further from the card, darker in light mode and
+ * lighter in dark, so no two stack alike and the legend, which Recharts writes in the series colour,
+ * stays legible. Not yet in the design system's tokens (AIE-55 regenerates it).
+ */
 export const SERIES = [
   pair("primary-500", "primary-400"),
   pair("tertiary-600", "tertiary-400"),
   pair("secondary-600", "secondary-300"),
   pair("surface-500", "surface-400"),
+  pair("primary-800", "primary-200"),
+  pair("tertiary-800", "tertiary-200"),
+  pair("secondary-800", "secondary-100"),
+  pair("surface-700", "surface-200"),
 ];
 
 // Written out in full: Tailwind only emits a class it can read whole from the source, and only
@@ -31,6 +41,7 @@ const CHART = [
   "[&_.recharts-tooltip-cursor]:[fill-opacity:0.4]",
   // data-quality windows (dataQuality.tsx): `quality-shade`, the reason in `small` `ink-muted`
   "[&_.recharts-reference-area-rect]:fill-[light-dark(var(--color-surface-400),var(--color-surface-300))]",
+  "[&_.recharts-reference-area-rect]:[fill-opacity:0.18]",
   "[&_.recharts-label]:fill-[light-dark(var(--color-surface-600),var(--color-surface-200))]",
   "[&_.recharts-label]:text-[13px]",
 ].join(" ");

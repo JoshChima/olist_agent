@@ -10,9 +10,7 @@ export const DATA_QUALITY_WINDOWS = [
 /**
  * Shading for the windows that overlap a chart whose category x-axis runs first..last. The
  * axis is ISO days ("2017-11-24") or months ("2017-11"): window dates are cut to that length.
- * Inside a ChartPanel the shade and label take the design system's tokens by CSS; the colours
- * below are what a chart outside one shows. ponytail: the Funnel is the last such chart (AIE-54);
- * drop the fill, fillOpacity and label colours once it is in a panel.
+ * The shade and its label take the design system's tokens from the ChartPanel around the chart.
  */
 export function dataQualityAreas(first: string, last: string) {
   const cut = (d: string) => d.slice(0, first.length);
@@ -23,9 +21,7 @@ export function dataQualityAreas(first: string, last: string) {
         key={w.from}
         x1={w.from < first ? first : w.from}
         x2={w.to > last ? last : w.to}
-        fill="#888"
-        fillOpacity={0.18}
-        label={{ value: `Data quality: ${w.label}`, position: "insideTop", fontSize: 11, fill: "#555" }}
+        label={{ value: `Data quality: ${w.label}`, position: "insideTop" }}
       />
     ));
 }
