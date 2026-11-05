@@ -1,12 +1,12 @@
 # 11. Skeleton v5 with the Concord theme is the design system
 
-Date: 2026-10-31 · Status: Accepted · Amended 2026-11-01 (typeface)
+Date: 2026-10-31 · Status: Accepted · Amended 2026-11-01 (typeface), 2026-11-05 (input edge)
 
 ## Context
 P0 and P1 shipped the web app with inline styles, no stylesheet and no component library. The next milestone reworks the UI and uses Claude Design for mockups, which works from a design system: tokens, components and guidelines that agents read. Every later phase adds a data-dense surface (chat over SQL, a product page, a findings feed, a model comparison), so the look is an analyst console.
 
 ## Decision
-- Tailwind v4 with Skeleton v5 (`@skeletonlabs/skeleton` and `@skeletonlabs/skeleton-react`) and Skeleton's preset theme **Concord**, used verbatim except typography. Theme overrides live in one block of the global stylesheet. Its first content (amended 2026-11-01) is the typeface: Inter for body and headings and JetBrains Mono for identifiers, self-hosted from their Fontsource packages, replacing Concord's system font stacks. Any further override is chosen only after seeing Concord on real pages.
+- Tailwind v4 with Skeleton v5 (`@skeletonlabs/skeleton` and `@skeletonlabs/skeleton-react`) and Skeleton's preset theme **Concord**, used verbatim except typography and the input edge. Theme overrides live in one block of the global stylesheet. Its first content (amended 2026-11-01) is the typeface: Inter for body and headings and JetBrains Mono for identifiers, self-hosted from their Fontsource packages, replacing Concord's system font stacks. Any further override is chosen only after seeing Concord on real pages. The second (amended 2026-11-05, AIE-59, after the P1.5 pages shipped) is the input edge: Concord rings Skeleton's `input` in `surface-300-700`, 2.5:1 on the card in light and 1.2:1 in dark, under WCAG 1.4.11's 3:1, so on `.input` only that pair becomes surface-400 light / surface-300 dark (3.7:1 and 4.2:1).
 - The repo's global stylesheet (Skeleton import, Concord import, override block) is the source of truth. The Design System artifact that Claude Design reads is generated from it and regenerated when the override block changes; it is never edited by hand.
 - A Skeleton React component is used wherever one exists. Tables are native HTML with Skeleton's table classes. Charts stay on Recharts, coloured from Skeleton's CSS variables. Anything Skeleton lacks is built from Tailwind utilities and Skeleton presets. No second component library.
 - Both light and dark mode ship, following the operating system; no in-app toggle.
@@ -18,4 +18,5 @@ Alternatives: shadcn/ui copies component source into the repo and is what most a
 - Claude Design prompts and tickets use Skeleton's vocabulary: colour families (primary, secondary, tertiary, success, warning, error, surface), light-dark pairings such as `bg-surface-200-800`, preset classes and Skeleton component names.
 - Skeleton has no data grid or chart component, so the Explorer keeps its own column sort and Recharts stays.
 - Swapping the theme later is one import and one attribute; swapping Skeleton itself means rewriting every component.
-- The typeface amendment exists for the screenshot tests: Concord's system stacks render differently per platform, so the baselines recorded on CI could only be compared on Linux. One self-hosted typeface makes every platform draw the same glyphs, so the comparisons run everywhere, at zero tolerance on CI and a small measured tolerance locally. The cost is the design system's one departure from Concord, and about 200 KB of font files in the bundle.
+- The typeface amendment exists for the screenshot tests: Concord's system stacks render differently per platform, so the baselines recorded on CI could only be compared on Linux. One self-hosted typeface makes every platform draw the same glyphs, so the comparisons run everywhere, at zero tolerance on CI and a small measured tolerance locally. The cost is a departure from Concord, and about 200 KB of font files in the bundle.
+- The input-edge amendment is the second departure, a colour on one control. Skeleton's `select` and `textarea` draw the same ring and keep Concord's pair; one that sits on a card needs the same check.

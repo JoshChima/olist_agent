@@ -14,7 +14,9 @@
  *    mono token, which Skeleton's code, pre and kbd read, becomes JetBrains Mono.
  * 2. The input ring (AIE-59): Skeleton's `input` draws its edge in surface-300-700, 2.5:1 on
  *    card in light and 1.2:1 in dark, under WCAG 1.4.11's 3:1. On inputs only, that pair becomes
- *    surface-400 light / surface-300 dark (3.7:1 and 4.2:1 on card). Focus still turns it primary.
+ *    surface-400 light / surface-300 dark (3.7:1 and 4.2:1 on card). It remaps the pair the ring
+ *    reads rather than setting --tw-ring-color, because an unlayered rule here would beat Skeleton's
+ *    focus colour; this way focus still turns the ring primary.
  */
 [data-theme='concord'] {
   --typo-base--font-family: 'Inter Variable', sans-serif;
