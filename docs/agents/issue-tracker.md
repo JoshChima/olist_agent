@@ -7,6 +7,7 @@ Linear is the only task list here. Don't create `TASKS.md` or a `memory/` folder
 ## Conventions
 
 - **Create an issue**: `save_issue` with `team: "AIE"`, `project: "olist_agent"`, `title`, and a markdown `description`. New issues start in `Backlog`.
+- **Milestone**: also pass `milestone` with the parent's milestone, or the one the work belongs to. Linear does not inherit it from `parentId`. Leave it off only when the issue is deliberately deferred to another process (a retro finding, tooling), and say so in the description.
 - **Read an issue**: `get_issue` with the identifier (e.g. `AIE-12`); `list_comments` for the thread.
 - **List issues**: `list_issues` with `team: "AIE"`, `project: "olist_agent"`, plus `label` / `state` filters.
 - **Make an issue a sub-issue of a parent**: `save_issue` with `parentId: "AIE-<n>"`.
