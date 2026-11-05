@@ -13,7 +13,11 @@ export const SMALL = "text-[13px] leading-[18px]";
 /** `focus`: a solid 2px ring, 2px offset, on every control. */
 export const FOCUS =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 dark:focus-visible:outline-primary-300";
-/** A one-line `role="status"` strip on the `info-tonal` ground: the delta strip, "No data loaded yet.". */
-export const STATUS = `preset-tonal-tertiary rounded-base truncate px-3 py-2 tabular-nums ${SMALL}`;
+/**
+ * A `role="status"` strip on the `info-tonal` ground: the delta strip, "No data loaded yet.". One line with an
+ * ellipsis from 2xl (1536px) up; below it, it wraps (AIE-59): the delta strip's nine counts need 1163px of text
+ * for a day step and 1311px for a month, more than the column holds at laptop and tablet widths.
+ */
+export const STATUS = `preset-tonal-tertiary rounded-base 2xl:truncate px-3 py-2 tabular-nums ${SMALL}`;
 /** `section-title`: chart panel, stat row and table headings, 17px/24px bold. */
 export const SECTION_TITLE = "h3 text-[17px] leading-6";

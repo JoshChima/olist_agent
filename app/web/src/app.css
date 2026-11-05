@@ -9,12 +9,19 @@
 
 /*
  * Theme overrides. The only place a theme value may ever change. Changing it means
- * regenerating the Design System artifact linked on AIE-47. Its only content is the
- * typeface (AIE-58): Concord's base and heading families become Inter, and Tailwind's
- * mono token, which Skeleton's code, pre and kbd read, becomes JetBrains Mono.
+ * regenerating the Design System artifact linked on AIE-47. Two entries:
+ * 1. The typeface (AIE-58): Concord's base and heading families become Inter, and Tailwind's
+ *    mono token, which Skeleton's code, pre and kbd read, becomes JetBrains Mono.
+ * 2. The input ring (AIE-59): Skeleton's `input` draws its edge in surface-300-700, 2.5:1 on
+ *    card in light and 1.2:1 in dark, under WCAG 1.4.11's 3:1. On inputs only, that pair becomes
+ *    surface-400 light / surface-300 dark (3.7:1 and 4.2:1 on card). Focus still turns it primary.
  */
 [data-theme='concord'] {
   --typo-base--font-family: 'Inter Variable', sans-serif;
   --typo-heading--font-family: 'Inter Variable', sans-serif;
   --font-mono: 'JetBrains Mono Variable', monospace;
+
+  & .input {
+    --color-surface-300-700: light-dark(var(--color-surface-400), var(--color-surface-300));
+  }
 }
