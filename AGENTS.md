@@ -22,6 +22,10 @@ Default canonical labels (`needs-triage`, `needs-info`, `ready-for-agent`, `read
 
 Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
+### GitHub reads
+
+Read GitHub through the GitHub connector's MCP tools, not `gh`: PRs and their check runs, diffs, comments and reviews, commits, file contents, issues. Keep `gh` for what the connector lacks: downloading a run's artifacts (the baseline flow in `docs/agents/web-tests.md`), reading a run's log (the deployed URL in `docs/agents/pr-evidence.md`), and listing workflow runs by branch.
+
 ### PR screenshots
 
 Before/after screenshots for a PR: capture, store and embed them as `docs/agents/pr-evidence.md` says.
