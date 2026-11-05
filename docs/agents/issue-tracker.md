@@ -13,7 +13,7 @@ Linear is the only task list here. Don't create `TASKS.md` or a `memory/` folder
 - **Make an issue a sub-issue of a parent**: `save_issue` with `parentId: "AIE-<n>"`.
 - **Comment on an issue**: `save_comment` on the issue.
 - **Apply / remove labels**: `save_issue` with `id` and `addLabels` / `removeLabels`.
-- **Close**: first check **every acceptance criterion** against the delivered work: run the test, hit the endpoint, read the config. Tick the met ones in the description. Move any unmet one to a follow-up issue linked with `relatedTo`, and say so in the closing comment. Then comment, and `save_issue` with `state: "Done"` (completed) or `state: "Canceled"` (won't do). Duplicates: `duplicateOf: "AIE-<n>"`.
+- **Close**: first check **every acceptance criterion** against the delivered work: run the test, hit the endpoint, read the config. Tick the met ones in the description. Move any unmet one to a follow-up issue linked with `relatedTo`, and say so in the closing comment. Then comment, and `save_issue` with `state: "Done"` (completed) or `state: "Canceled"` (won't do). Duplicates: `duplicateOf: "AIE-<n>"`. When that close leaves a milestone with no open issue, ask Josh for the milestone's project update: `docs/agents/project-update.md`.
 - **A decision made after a spec is written** (a region move, a narrowed term): comment it on the spec. Patch the spec's description only when the change alters what gets built. `save_issue` echoes the whole description back, so every patch to a long spec costs its full length.
 
 Statuses in AIE: Backlog, Todo, In Progress, Done, Canceled, Duplicate.

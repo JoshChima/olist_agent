@@ -92,7 +92,7 @@ The base app is a **time-travel simulator** over the Olist Kaggle dataset (order
 
 **Course format**
 - Each phase is a Linear **milestone** containing issues, with one PR per issue.
-- When a milestone closes, write one **lesson as a Linear document**: why we built it, how the parts interact, and what to watch for on the infrastructure side.
+- When a milestone closes, write one **lesson as a Linear document**: why we built it, how the parts interact, and what to watch for on the infrastructure side. Then ask Josh for a **project update** on the Linear project: what was completed, the lessons, and the roadblocks and how they were resolved (`docs/agents/project-update.md`).
 - ADRs go in `docs/adr/` and domain terms in `GLOSSARY.md`, both in the repo as AGENTS.md requires.
 
 ## Phases (each one ends in a deployed state)
