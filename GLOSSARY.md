@@ -54,7 +54,7 @@ The parts of the web app that tickets and design prompts refer to by name.
 
 **Clock controls** — The part of the shell that performs time-warps: a date input and six step buttons (±1 day, week, month). Avoid: "date picker", "time controls".
 
-**Delta strip** — The one-line summary of the delta event produced by the latest forward time-warp, shown under the shell on every page. Shows "rewound" after a rewind.
+**Delta strip** — The summary of the delta event produced by the latest forward time-warp, shown under the shell on every page: one line on wide screens, wrapping below them so every count stays visible. Shows "rewound" after a rewind.
 
 **Orders dashboard** — The page of order figures as of the clock: 30-day stats, order and revenue charts, status breakdown. The default page.
 

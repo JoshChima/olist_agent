@@ -61,6 +61,18 @@ No issues. Labels and headings are sentence case and in the glossary's words; ea
 | Explorer header | "order_status, button", column header sorted ascending |
 | Pager | "Pages of rows" navigation; Previous, page buttons, Next |
 
+## Shell findings carried from AIE-51 (AIE-59)
+
+The AIE-51 shell review filed three minors as [AIE-59](https://linear.app/gloph-software-factory/issue/AIE-59) for a decision at milestone close. Decided 2026-11-05, all three closed:
+
+| # | Issue | WCAG | Decision |
+|---|---|---|---|
+| 1 | The date input's edge is Concord's `surface-300-700` ring: 2.5:1 on `card` light, 1.2:1 dark. | 1.4.11 Non-text contrast | **Fixed**: a second override-block entry sets that pair to surface-400 light / surface-300 dark on `.input` only, so the edge is 3.7:1 on `card` light and 4.2:1 dark (6.0:1 on the input's own dark fill). Focus still turns it primary. The design system artifact carries it as `input-edge`. |
+| 2 | The delta strip truncates at tablet width: a day step's nine counts need 1163px of text, a month step's 1311px; at 1024 wide the strip is 920px, 896px of it for text. | 1.4.10 Reflow (advisory) | **Fixed**: below Tailwind's `2xl` (1536px, where a month's counts still fit on one line) the strip wraps instead of truncating, two lines at 1024 and 1280 wide; from 1536px up it stays one line with the ellipsis. No wording change, no count dropped. |
+| 3 | Duplicate page heading under the shell's h1. | 2.4.6 Headings and labels | **Gone**: Orders and Funnel open with a section heading and a `small` `ink-muted` "as of" line (AIE-52, AIE-54). |
+
+Contrast measured from the design system's hex values (WCAG relative luminance): edge on `card` before 2.52:1 light, 1.23:1 dark; after 3.72:1 light, 4.23:1 dark. Widths measured in Chromium with the shipped Inter against the e2e delta fixture (a day) and a month's counts.
+
 ## Glyphs outside the typeface
 
-Not accessibility findings, but found on the same pass: Inter's Fontsource subsets carry ↑ ↓ − – … but not → or ▲ ▼, which fell back to a system font that draws differently per platform. The Funnel's arrows are now an inline SVG stroked in the text colour, and the Explorer's sort arrows are ↑ and ↓. The delta strip's "from → to" still uses →; its wording is pinned by the e2e interaction and it is not in a screenshot, so it is left as is.
+Not accessibility findings, but found on the same pass: Inter's Fontsource subsets carry ↑ ↓ − – … but not → or ▲ ▼, which fell back to a system font that draws differently per platform. The Funnel's arrows are now an inline SVG stroked in the text colour, and the Explorer's sort arrows are ↑ and ↓. The delta strip's window used → too; AIE-65 replaced it with words ("from 2018-02-17 to 2018-02-18").
