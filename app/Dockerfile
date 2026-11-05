@@ -10,6 +10,9 @@ RUN pnpm build
 # Stage 2: runtime. Deps are installed before the source is copied so code
 # edits don't invalidate the (slow) dependency layer.
 FROM python:3.13-slim
+# The base image lags Debian's security fixes (apt CVE-2026-109518 failed the trivy
+# scan), so take them before anything else is layered on.
+RUN apt-get update && apt-get -y upgrade && rm -rf /var/lib/apt/lists/*
 # uv installs everything, so the base image's pip (and its vendored, CVE-prone
 # urllib3/setuptools) is dead weight that fails the trivy image scan.
 RUN pip uninstall -y pip
