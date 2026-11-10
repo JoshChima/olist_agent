@@ -2,14 +2,52 @@
 
 A time-travel simulator over the [Olist Brazilian e-commerce dataset](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce), with multi-agent AI on top. It runs on Azure Container Apps, is provisioned with Terraform, and deploys through GitHub Actions.
 
-**Status: P0, the walking skeleton.** A FastAPI app with `/health` and `/api/hello` serves a React shell, and every merge to `main` deploys it.
+**Status: the simulator is live; the first agent is next.** P0 (walking skeleton), P1 (simulator) and P1.5 (UI rework) are shipped, and every merge to `main` deploys. P2 adds the first agent, an Analyst Chat over a SQL tool.
+
+![The Orders dashboard as of 2018-02-17, light mode](app/web/e2e/baselines/orders-light.png#gh-light-mode-only)
+![The Orders dashboard as of 2018-02-17, dark mode](app/web/e2e/baselines/orders-dark.png#gh-dark-mode-only)
+
+That picture is one of the screenshot baselines CI compares the app against, so it is always what the app looks like.
+
+## What it does
+
+The dataset is a fixed record of 2016 to 2018. The simulator replays it: you pick a day, and every page shows the business as it looked that day and nothing later. Agents, from P2 on, treat that data as if it were arriving live. The words below are defined in [GLOSSARY.md](GLOSSARY.md).
+
+- **The clock** is the simulated "today": a calendar day between 2016-09-04 and 2018-10-17, carried in the page URL (`?clock=2017-11-24`), so a link to Black Friday 2017 shows the recipient the same day.
+- **A time-warp** moves the clock, with the date input or the step buttons (a day, week or month either way). A forward time-warp shows a **delta event** in the strip under the app bar: what arrived in between ("412 new orders, 38 delivered, 2 deals closed"). A rewind shows fewer rows.
+- **as_of** is the rule that makes it honest: an order purchased before the clock but delivered after it appears with no delivery date and a status derived at the clock. Revealing anything later is **future leakage**, always a bug, and a property test guards it.
+- **Three pages** read the data as of the clock: the **Orders dashboard** (30-day figures, daily orders, status, categories, customer states), the **Funnel dashboard** (MQL → closed deal → active seller, with conversion rates) and the **Explorer** (any table, sortable, 50 rows a page).
+- **Data-quality windows**, the sparse start of 2016 and the collection artifact at the end of 2018, are shaded on time charts, so nobody reads an artifact as a business change.
+
+## Roadmap
+
+Each phase ends in a deployed state. The plan and the reasoning behind it are in [docs/plan.md](docs/plan.md).
+
+| Phase | App | AI | Status |
+|---|---|---|---|
+| P0 Walking skeleton | FastAPI "hello" + React shell, deployed end to end | — | shipped |
+| P1 Simulator | loader, as_of views, clock, delta events, order and funnel dashboards, table explorer | — | shipped |
+| P1.5 UI rework | every surface restyled on one design system; the web app's first tests | — | shipped |
+| P2 First agent | Analyst Chat over a SQL tool | raw tool-use loop, then LangGraph; cost ledger and spend cap | next |
+| P3 Review intelligence | product page: issues, summaries, translations, RAG search | taxonomy discovery, tagging, sentiment, rerank; eval harness | planned |
+| P4 Anomaly Investigator | findings feed with evidence charts | statistical detector, then an LLM investigation per clock window | planned |
+| P5 Model-agnostic | per-agent model selector | OpenRouter and a self-hosted open model; Claude vs open-model evals | planned |
+| P6 Leads funnel agent | optional | — | optional |
+
+## Layout
 
 ```
 app/                FastAPI (uv) + React/Vite SPA (pnpm), one container
-  olist_agent/      Python package
-  web/              SPA; built into web/dist and served by FastAPI
+  olist_agent/      API, loader, numbered SQL migrations (the raw and sim schemas)
+  tests/            pytest on a Postgres testcontainer, including the leakage property test
+  web/              SPA on Tailwind + Skeleton; built into web/dist and served by FastAPI
+    e2e/            Playwright spec, API fixtures, screenshot baselines
 infra/bootstrap/    one-time, local state: tfstate storage, app RG, CI identities
 infra/              everything else; applied by CD
+scripts/            check.sh (what CI runs), tf-toolbox.sh, get-data.sh, upload-data.sh, guards
+tools/tf-toolbox/   the container that runs Terraform and az against real Azure
+docs/               plan.md, adr/ (decisions), agents/ (how agents work here), evidence/ (PR screenshots)
+GLOSSARY.md         the project's vocabulary
 .github/workflows/  ci.yml (PRs), cd.yml (main)
 ```
 
@@ -29,7 +67,23 @@ cd app && uv run uvicorn olist_agent.main:app --reload --port 8080
 cd app/web && pnpm install && pnpm dev    # http://localhost:5173, proxies /api to :8080
 ```
 
-Checks (the same ones CI runs): `cd app && uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run pytest`.
+### Checks
+
+One script runs every check that needs no Azure, and CI's jobs call the same script, so a local pass means a CI pass. It needs `uv`, Node (for corepack) and Docker; on Windows, run it from Git Bash.
+
+```bash
+scripts/check.sh              # all four sections
+scripts/check.sh web          # or just one: app, web, iac, image
+```
+
+| Section | What it runs |
+|---|---|
+| `app` | ruff, pyright, and pytest against a Postgres testcontainer loaded by the real loader; the leakage property test is here |
+| `web` | no inline style or hex colour in the source, the build (with `tsc`), Vitest for three pinned behaviours, and Playwright comparing each page in light and dark to its baseline |
+| `iac` | Terraform fmt, validate, tflint and `terraform test` for both roots, the tests for the agent guards, shellcheck, and a Trivy config scan |
+| `image` | builds the container and scans it with Trivy |
+
+The screenshot baselines are recorded on CI and updated on purpose by the PR that changes a page: [docs/agents/web-tests.md](docs/agents/web-tests.md).
 
 ## First deploy (one time, by you)
 
@@ -75,7 +129,7 @@ You need `az`, `gh`, `terraform` >= 1.10, and an Azure subscription where you ar
    ```
 6. **Protect `main`** (recommended). Require the CI checks `app`, `web`, `iac` and `plan` before merging. CD applies whatever lands on `main`, so CI is the only gate.
 
-To check it worked: the CD log ends with `live: <sha>`, the app URL (`terraform -chdir=infra output app_url`, or the CD log) serves the shell, and `budget-olist-agent` appears under Cost Management → Budgets.
+To check it worked: the CD log ends with `live: <sha>`, the app URL (`terraform -chdir=infra output app_url`, or the CD log) serves the app, and `budget-olist-agent` appears under Cost Management → Budgets.
 
 Optional: to run a plan from your machine (bootstrap gave you blob access to the state):
 
@@ -99,6 +153,13 @@ The file goes to the private `olist-data` container, as you. CD runs the loader 
 
 ## How the pieces fit
 
+The decisions behind these are in [docs/adr/](docs/adr/); each bullet names its record.
+
+- **The simulator is views, not copies.** The loader loads the whole dataset once into a `raw` schema. The app's database role can read only the `sim` schema: one view per table, filtered to the clock, which the API sets per transaction. A query can't widen the clock, and with no clock set the views return nothing (ADR-0001, ADR-0008).
+- **The clock lives in the URL**, not in a server session. Every API call carries it, the server holds no session state, and a clock outside the dataset's range is rejected, never clamped (ADR-0009).
+- **Postgres accepts only Entra ID sign-ins.** There is no database password. The server is a burstable Flexible Server on a public endpoint with TLS (ADR-0002, ADR-0010).
+- **One design system.** The web app is Tailwind v4 with Skeleton v5's Concord theme and one self-hosted typeface, in light and dark following the operating system. The global stylesheet is the source of truth, and the `web` check fails on an inline style or a hex colour, so nothing escapes it (ADR-0011).
+- **Screenshots are tests.** A restyle proves it changed looks and nothing else: CI compares every page pixel-exact to a committed baseline.
 - **Two Terraform roots.** Bootstrap creates what the pipeline needs before it can run: the state backend, plus the identity it logs in as. Nothing in `infra/` can do that for itself.
 - **OIDC, no secrets.** GitHub mints a short-lived token per job, and Azure trusts it only for a matching subject. There are two identities:
   - `deploy` is trusted only on `refs/heads/main` and applies `infra/`.
@@ -108,7 +169,19 @@ The file goes to the private `olist-data` container, as you. CD runs the loader 
 - **Logs and PR comments are public.** Workflows read Azure IDs from secrets, and Terraform output goes through `scripts/redact.py`, which fails the job if an ID survives redaction. For agents, the `scripts/guard_ids.py` hook blocks GitHub and Linear posts that contain a known ID.
 - **Workload-profiles environment from day one.** P5's serverless GPU needs it, and an environment can't be converted after it's created.
 - **Terraform owns infrastructure; CD owns the image.** The container app ignores changes to `image`. The first apply runs a public placeholder that also listens on 8080, and every deploy after that is `az containerapp update --image <acr>/olist-agent:<sha>`. The loader job works the same way, and CD runs it after each deploy.
-- **Cost.** ACR Basic is about $5 a month. The app scales to zero, Log Analytics is capped at 1 GB a day, and an RG budget alerts at 80% actual and 100% forecast of $50. A budget alerts but never stops spending.
+- **Cost.** Postgres (B1ms, 32 GiB) is about $16 a month and never scales to zero; ACR Basic is about $5. The app scales to zero, Log Analytics is capped at 1 GB a day, and an RG budget alerts at 80% actual and 100% forecast of $50. A budget alerts but never stops spending.
+
+## How the project is run
+
+This is a course-style build: each phase is a milestone, each issue is one PR, and most of the code is written by coding agents working from a spec.
+
+- **Issues live in Linear.** Every PR names its issue and ends `Fixes AIE-n` only once each acceptance criterion is checked against the work ([docs/agents/issue-tracker.md](docs/agents/issue-tracker.md)).
+- **A phase goes idea → spec → tickets → one session per ticket.** Decisions that are hard to reverse become ADRs, and new vocabulary goes in the glossary, as the work happens.
+- **PRs carry evidence.** A change you can see ships with before and after screenshots ([docs/agents/pr-evidence.md](docs/agents/pr-evidence.md)).
+- **Agents work behind gates.** They can plan against real Azure but can't apply without an approved plan hash (see [Running Terraform locally](#running-terraform-locally)), and hooks block posts that contain an Azure ID.
+- **A milestone closes with a lesson**: why it was built, how the parts interact, and what to watch for next.
+
+[AGENTS.md](AGENTS.md) is where an agent starts.
 
 ## Bootstrap role assignments
 
